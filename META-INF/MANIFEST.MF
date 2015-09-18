@@ -1,0 +1,11 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Dynami - Runtime
+Bundle-SymbolicName: org.dynami.runtime
+Bundle-Version: 1.0.0.Anna
+Bundle-Vendor: Alessandro Atria
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Bundle-ClassPath: .,
+ libs/flexjson-2.1.jar,
+ libs/jcommander.jar
+Require-Bundle: org.dynami.core;bundle-version="1.0.0"

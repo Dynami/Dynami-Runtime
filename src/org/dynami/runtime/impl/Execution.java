@@ -19,13 +19,14 @@ import java.io.File;
 
 import org.dynami.core.IDynami;
 import org.dynami.core.IStrategy;
+import org.dynami.core.bus.IMsg;
 import org.dynami.core.config.Config;
 import org.dynami.core.utils.StateMachine;
 import org.dynami.core.utils.StateMachine.ChangeStateListener;
 import org.dynami.runtime.IExecutionManager;
 import org.dynami.runtime.IServiceBus;
 import org.dynami.runtime.IStrategyExecutor;
-import org.dynami.runtime.bus.Msg;
+import org.dynami.runtime.bus.Msg2;
 import org.dynami.runtime.impl.StrategyClassLoader.AddonDescriptor;
 import org.dynami.runtime.json.JSON;
 import org.dynami.runtime.models.StrategyInstance;
@@ -33,13 +34,14 @@ import org.dynami.runtime.topics.Topics;
 
 public enum Execution implements IExecutionManager {
 	Manager;
-	
+
 	private final IServiceBus serviceBus = new ServiceBus();
 	private IStrategyExecutor engine = new StrategyExecutor();
 	private StrategyInstance instance;
 	private String strategyJarBasePath;
 	private IDynami dynami = (IDynami)engine;
-	
+
+
 	private final StateMachine stateMachine = new StateMachine(()->{
 		State.NonActive.addChildren(State.Selected, State.Initialized);
 		State.Selected.addChildren(State.Initialized);
@@ -50,10 +52,15 @@ public enum Execution implements IExecutionManager {
 		State.Stopped.addChildren(State.NonActive);
 		return State.NonActive;
 	});
-	
+
 	@Override
 	public IDynami dynami() {
 		return dynami;
+	}
+
+	@Override
+	public IMsg msg() {
+		return Msg2.Broker;
 	}
 
 	@Override
@@ -63,12 +70,12 @@ public enum Execution implements IExecutionManager {
 			this.engine = engineClazz.newInstance();
 			this.dynami = (IDynami)engine;
 		} catch (Exception e) {
-			Msg.Broker.async(Topics.ERRORS.topic, e);
+			msg().async(Topics.ERRORS.topic, e);
 			return false;
-		} 
+		}
 		return true;
 	}
-	
+
 	@Override
 	public boolean init(Config config) {
 		if(stateMachine.canChangeState(State.Initialized)){
@@ -78,7 +85,7 @@ public enum Execution implements IExecutionManager {
 		}
 		return false;
 	}
-	
+
 	@Override
 	public boolean select(String strategyInstanceFilePath, String strategyJarBasePath) {
 		try {
@@ -90,7 +97,7 @@ public enum Execution implements IExecutionManager {
 				return false;
 			}
 		} catch (Exception e) {
-			Msg.Broker.async(Topics.ERRORS.topic, e);
+			msg().async(Topics.ERRORS.topic, e);
 			return false;
 		}
 	}
@@ -102,14 +109,14 @@ public enum Execution implements IExecutionManager {
 				try(StrategyClassLoader loader = new StrategyClassLoader(strategyJarBasePath+File.separator+instance.getStrategyDescriptor().getJarName(), getClass().getClassLoader())){
 					final AddonDescriptor<IStrategy> addon = loader.getAddonDescriptor();
 					final IStrategy strategy = addon.getClazz().newInstance();
-				
+
 					engine.setup(serviceBus);
 					engine.load(strategy);
-					
+
 				}
 				return stateMachine.changeState(State.Loaded);
 			} catch (Exception e) {
-				Msg.Broker.async(Topics.ERRORS.topic, e);
+				msg().async(Topics.ERRORS.topic, e);
 				return false;
 			}
 		} else {
@@ -180,9 +187,9 @@ public enum Execution implements IExecutionManager {
 	@Override
 	public boolean isSelected() {
 		return stateMachine.getCurrentState().in(
-				State.Initialized, 
-				State.Loaded, 
-				State.Running, 
+				State.Initialized,
+				State.Loaded,
+				State.Running,
 				State.Paused);
 	}
 

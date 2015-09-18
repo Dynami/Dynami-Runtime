@@ -26,7 +26,6 @@ import org.dynami.core.IDynami;
 import org.dynami.core.IStage;
 import org.dynami.core.IStrategy;
 import org.dynami.core.ITechnicalIndicator;
-import org.dynami.core.bus.IMsg;
 import org.dynami.core.services.IAssetService;
 import org.dynami.core.services.IDataService;
 import org.dynami.core.services.IOrderService;
@@ -34,7 +33,6 @@ import org.dynami.core.services.IPortfolioService;
 import org.dynami.core.services.ITraceService;
 import org.dynami.runtime.IServiceBus;
 import org.dynami.runtime.IStrategyExecutor;
-import org.dynami.runtime.bus.Msg;
 import org.dynami.runtime.topics.Topics;
 
 public class StrategyExecutor implements IStrategyExecutor, IDynami {
@@ -45,9 +43,8 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 	private IServiceBus serviceBus;
 	private IStrategy strategy;
 	private IStage stage, previousStage;
-	
-	private IMsg msg = Msg.Broker;
-	
+
+
 	@Override
 	public void setup(IServiceBus serviceBus) {
 		this.serviceBus = serviceBus;
@@ -57,30 +54,30 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 	public void load(final IStrategy strategy) throws Exception{
 		this.strategy = strategy;
 		this.stage = strategy.startsWith();
-		
-		msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, msg)->{
+
+		Execution.Manager.msg().subscribe(Topics.STRATEGY_EVENT.topic, (last, _msg)->{
 			if(last){
-				Event event = (Event)msg;
+				Event event = (Event)_msg;
 				lastIncomingEvent.set(event);
 				lastExecutedEvent.set( exec(lastIncomingEvent.get()));
 			}
 		});
-		
+
 		this.strategy.onStrategyStart(this);
 	}
-	
+
 	private synchronized Event exec(Event event){
-		
+
 		if(stage != previousStage){
 			runOncePerStage(stage);
 			previousStage = stage;
 		}
-		
+
 		stage.process(this, event);
-		
+
 		if(endStrategy.get()){
 			try {
-				msg.unsubscribeAllFor(Topics.STRATEGY_EVENT.topic);
+				Execution.Manager.msg().unsubscribeAllFor(Topics.STRATEGY_EVENT.topic);
 				lastIncomingEvent.set(null);
 				lastExecutedEvent.set(null);
 				endStrategy.set(false);
@@ -88,12 +85,12 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 				previousStage = null;
 				strategy.onStrategyFinish(this);
 			} catch (Exception e) {
-				msg.async(Topics.STRATEGY_ERRORS.topic, e);
+				Execution.Manager.msg().async(Topics.STRATEGY_ERRORS.topic, e);
 			}
 		}
 		return event;
 	}
-	
+
 	private void runOncePerStage(IStage stage) {
 //		tradingSystems.clear();
 		technicalIndicators.clear();
@@ -101,7 +98,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 			extractUserUtilities(stage, technicalIndicators);
 			stage.setup(this);
 		} catch (Exception e) {
-			msg.async(Topics.STRATEGY_ERRORS.topic, e);
+			Execution.Manager.msg().async(Topics.STRATEGY_ERRORS.topic, e);
 		}
 	}
 

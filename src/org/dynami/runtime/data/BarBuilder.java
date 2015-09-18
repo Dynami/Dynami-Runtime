@@ -21,7 +21,7 @@ class BarBuilder {
 	String symbol= null;
 	boolean empty = true;
 	final long NONE = -1L;
-	long open, high, low, close;
+	double open, high, low, close;
 	long volume, openInterest, time;
 	
 	public BarBuilder() {

@@ -19,9 +19,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.dynami.runtime.IExecutionManager;
 import org.dynami.runtime.IServiceBus.ServiceStatus;
-import org.dynami.runtime.bus.Msg;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.moke.DataProvider;
 import org.dynami.runtime.topics.Topics;
@@ -30,40 +28,39 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 
 public class Starter {
-	private final IExecutionManager exec = Execution.Manager;
 	private final AtomicBoolean started = new AtomicBoolean(false);
-	
+
 	public Starter() {
-		Msg.Broker.subscribe(Topics.SERVICE_STATUS.topic, (last, msg)->{
-			ServiceStatus s = (ServiceStatus)msg;
+		Execution.Manager.msg().subscribe(Topics.SERVICE_STATUS.topic, (last, _msg)->{
+			ServiceStatus s = (ServiceStatus)_msg;
 			System.out.println(s);
 		});
-		
-		Msg.Broker.subscribe(Topics.ERRORS.topic, (last, msg)->{
-			Throwable e = (Throwable)msg;
+
+		Execution.Manager.msg().subscribe(Topics.ERRORS.topic, (last, _msg)->{
+			Throwable e = (Throwable)_msg;
 			e.printStackTrace();
 		});
 	}
-	
+
 	public static void main(String[] args) {
 		try {
 			new Starter().execute(new String[]{
-					"-file", "C:/Users/user/Desktop/test/strategy/org.sample.strategy.dynami", 
-					"-strategy_lib", "C:/Users/user/Desktop/test/strategy"});			
+					"-file", "C:/Users/user/Desktop/test/strategy/org.sample.strategy.dynami",
+					"-strategy_lib", "C:/Users/user/Desktop/test/strategy"});
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public void execute(String args[]) throws Exception {
 		Args arguments = new Args();
 		new JCommander(arguments, args);
-		
-		exec.getServiceBus().registerDefaultServices();
-		exec.getServiceBus().registerService(new DataProvider(), 100);
-		
-		if(exec.select(arguments.instanceFilePath, arguments.strategyLibPath)){
-			if(exec.init(null)){
+
+		Execution.Manager.getServiceBus().registerDefaultServices();
+		Execution.Manager.getServiceBus().registerService(new DataProvider(), 100);
+
+		if(Execution.Manager.select(arguments.instanceFilePath, arguments.strategyLibPath)){
+			if(Execution.Manager.init(null)){
 				System.out.println("Use the following commands to handle strategy execution:");
 				System.out.println(Commands.LOAD+"\tto load");
 				System.out.println(Commands.RUN+"\tto start");
@@ -71,7 +68,7 @@ public class Starter {
 				System.out.println(Commands.RESUME+"\tto resume from pause");
 				System.out.println(Commands.STOP+"\tto stop");
 				System.out.println(Commands.EXIT+"\tto shutdown Dynami");
-				
+
 				listener.start();
 			} else {
 				System.out.println("Something wrong append on initializing Dynami");
@@ -80,7 +77,7 @@ public class Starter {
 			System.out.println("Something wrong append on selecting strategy");
 		}
 	}
-	
+
 	private final Thread listener = new Thread(new Runnable() {
 		final BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 		@Override
@@ -96,40 +93,40 @@ public class Starter {
 				e.printStackTrace();
 			}
 		}
-	}, "Dynami-CommandListener");	
-	
+	}, "Dynami-CommandListener");
+
 	private void parseCommand(final String cmd) {
 		switch (cmd) {
 		case Commands.LOAD:
 			try {
-				boolean executed = exec.load();
+				boolean executed = Execution.Manager.load();
 				System.err.println(Commands.START_RESPONSE+cmd+"_"+((executed)?Commands.RESPONSE_EXECUTED:Commands.RESPONSE_NOT_EXECUTED)+Commands.END_RESPONSE);
 			} catch (Exception e) {
 				System.err.println(Commands.START_RESPONSE+cmd+"_"+Commands.RESPONSE_NOT_EXECUTED+Commands.END_RESPONSE);
 			}
-			
+
 			break;
 		case Commands.RUN:
 			try {
-				boolean executed = exec.run();
+				boolean executed = Execution.Manager.run();
 				started.set(executed);
 				System.err.println(Commands.START_RESPONSE+cmd+"_"+((executed)?Commands.RESPONSE_EXECUTED:Commands.RESPONSE_NOT_EXECUTED)+Commands.END_RESPONSE);
 			} catch (Exception e) {
 				System.err.println(Commands.START_RESPONSE+cmd+"_"+Commands.RESPONSE_NOT_EXECUTED+Commands.END_RESPONSE);
-			} 
+			}
 			break;
 		case Commands.PAUSE:
 			try {
-				boolean executed = exec.pause();
+				boolean executed = Execution.Manager.pause();
 				System.err.println(Commands.START_RESPONSE+cmd+"_"+((executed)?Commands.RESPONSE_EXECUTED:Commands.RESPONSE_NOT_EXECUTED)+Commands.END_RESPONSE);
 			} catch (Exception e) {
 				System.err.println(Commands.START_RESPONSE+cmd+"_"+Commands.RESPONSE_NOT_EXECUTED+Commands.END_RESPONSE);
 			}
-			
+
 			break;
 		case Commands.RESUME:
 			try {
-				boolean executed = exec.resume();
+				boolean executed = Execution.Manager.resume();
 				System.err.println(Commands.START_RESPONSE+cmd+"_"+((executed)?Commands.RESPONSE_EXECUTED:Commands.RESPONSE_NOT_EXECUTED)+Commands.END_RESPONSE);
 			} catch (Exception e) {
 				System.err.println(Commands.START_RESPONSE+cmd+"_"+Commands.RESPONSE_NOT_EXECUTED+Commands.END_RESPONSE);
@@ -137,17 +134,17 @@ public class Starter {
 			break;
 		case Commands.STOP:
 			try {
-				boolean executed = exec.stop();
+				boolean executed = Execution.Manager.stop();
 				System.err.println(Commands.START_RESPONSE+cmd+"_"+((executed)?Commands.RESPONSE_EXECUTED:Commands.RESPONSE_NOT_EXECUTED)+Commands.END_RESPONSE);
 			} catch (Exception e) {
 				System.err.println(Commands.START_RESPONSE+cmd+"_"+Commands.RESPONSE_NOT_EXECUTED+Commands.END_RESPONSE);
 			}
 			break;
 		case Commands.EXIT:
-			if(exec.isRunning()){
+			if(Execution.Manager.isRunning()){
 				try {
-					boolean executed = exec.stop();
-					
+					boolean executed = Execution.Manager.stop();
+
 					System.err.println(Commands.START_RESPONSE+cmd+"_"+((executed)?Commands.RESPONSE_EXECUTED:Commands.RESPONSE_NOT_EXECUTED)+Commands.END_RESPONSE);
 				} catch (Exception e) {
 					System.err.println(Commands.START_RESPONSE+cmd+"_"+Commands.RESPONSE_NOT_EXECUTED+Commands.END_RESPONSE);
@@ -159,7 +156,7 @@ public class Starter {
 			break;
 		}
 	}
-	
+
 	public static class Commands {
 		public static final String LOAD = "L";
 		public static final String RUN = "R";
@@ -167,20 +164,20 @@ public class Starter {
 		public static final String RESUME = "X";
 		public static final String STOP = "S";
 		public static final String EXIT = "E";
-		
+
 		public static final String ORDER_PREFIX = "ORDER:";
-		
+
 		public static final String RESPONSE_EXECUTED = "OK";
 		public static final String RESPONSE_NOT_EXECUTED = "KO";
-		
+
 		public static final char START_RESPONSE = 2;
 		public static final char END_RESPONSE = 3;
 	}
-	
+
 	public static class Args {
 		@Parameter(names = "-file", required = true)
 		String instanceFilePath;
-		
+
 		@Parameter(names = "-strategy_lib", required = true)
 		String strategyLibPath;
 	}

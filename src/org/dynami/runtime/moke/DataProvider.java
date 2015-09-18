@@ -19,25 +19,26 @@ import org.dynami.core.utils.DUtils;
 import org.dynami.runtime.IService;
 import org.dynami.runtime.bus.Msg;
 import org.dynami.runtime.data.BarData;
+import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 
 public class DataProvider implements IService, IDataProvider {
-	
+
 	private static final SimpleDateFormat intradaySecondsFormat = new SimpleDateFormat(TRACK_RECORD.INTRADAY_SECONDS_DATE_FORMAT);
 	private static final SimpleDateFormat intradayMinutesFormat = new SimpleDateFormat(TRACK_RECORD.INTRADAY_MINUTES_DATE_FORMAT);
 	private static final SimpleDateFormat dailyFormat = new SimpleDateFormat(TRACK_RECORD.DAILY_DATE_FORMAT);
 	private static final SimpleDateFormat dailyShortFormat = new SimpleDateFormat(TRACK_RECORD.DAILY_SHORT_DATE_FORMAT);
-	
+
 	private static final String SYMBOL = "FTSEMIB";
 	private IData historical;
 	private long clockFrequence = 1000;
 	private long bidAskSpread = DUtils.d2l(5.0);
-	
+
 	private final AtomicBoolean isStarted = new AtomicBoolean(true);
 	private final AtomicBoolean isRunning = new AtomicBoolean(false);
-	
-	private IMsg msg = Msg.Broker;
-	
+
+	private IMsg msg = Execution.Manager.msg();
+
 	@Override
 	public String id() {
 		return ID;
@@ -48,19 +49,19 @@ public class DataProvider implements IService, IDataProvider {
 		historical = restorePriceData(new File("C:/Users/user/Desktop/test/FTSEMIB_1M.txt"));
 		historical = historical.changeCompression(IData.COMPRESSION_UNIT.MINUTE*10);
 		Asset.Future ftsemib = new Asset.Future(
-				SYMBOL, 
-				"IT00002344", 
-				"FTSE-MIB", 
-				5.0, 
-				DUtils.d2l(.05), 
-				1, 
-				"IDEM", 
-				dailyFormat.parse("31/12/2015").getTime(), 
-				DUtils.d2l(1.), 
+				SYMBOL,
+				"IT00002344",
+				"FTSE-MIB",
+				5.0,
+				DUtils.d2l(.05),
+				1,
+				"IDEM",
+				dailyFormat.parse("31/12/2015").getTime(),
+				DUtils.d2l(1.),
 				"^FTSEMIB");
-		
+
 		msg.async(Topics.INSTRUMENT.topic, ftsemib);
-		
+
 		new Thread(new Runnable() {
 			private final AtomicInteger idx = new AtomicInteger(0);
 			@Override
@@ -74,7 +75,7 @@ public class DataProvider implements IService, IDataProvider {
 						msg.async(Topics.ORDERS_BOOK_PREFIX.topic+b.symbol, bid);
 						msg.async(Topics.ORDERS_BOOK_PREFIX.topic+b.symbol, ask);
 						msg.async(Topics.BAR.topic, b);
-						
+
 						msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(b.symbol, Event.Type.OnBarClose, b));
 					}
 					try {
@@ -83,7 +84,7 @@ public class DataProvider implements IService, IDataProvider {
 				}
 			}
 		}).start();
-		
+
 		return true;
 	}
 
@@ -116,7 +117,7 @@ public class DataProvider implements IService, IDataProvider {
 	public Status getStatus() {
 		return null;
 	}
-	
+
 	private static BarData restorePriceData(final File f) throws Exception {
 		SimpleDateFormat dateParser = null;
 		BufferedReader reader = null;
@@ -132,20 +133,20 @@ public class DataProvider implements IService, IDataProvider {
 					continue;
 				}
 				tmp = line.split("\t");
-				
+
 				if(dateParser == null){
 					dateParser = getApproprieateFormat(tmp[TRACK_RECORD.DATE]);
 				}
 				long time = dateParser.parse(tmp[TRACK_RECORD.DATE]).getTime();
-				long open = DUtils.d2l(Double.parseDouble(tmp[TRACK_RECORD.OPEN].replace(',', '.')));
-				long high = DUtils.d2l( Double.parseDouble(tmp[TRACK_RECORD.HIGH].replace(',', '.')));
-				long low = DUtils.d2l(Double.parseDouble(tmp[TRACK_RECORD.LOW].replace(',', '.')));
-				long close = DUtils.d2l(Double.parseDouble(tmp[TRACK_RECORD.CLOSE].replace(',', '.')));
+				double open = Double.parseDouble(tmp[TRACK_RECORD.OPEN].replace(',', '.'));
+				double high = Double.parseDouble(tmp[TRACK_RECORD.HIGH].replace(',', '.'));
+				double low = Double.parseDouble(tmp[TRACK_RECORD.LOW].replace(',', '.'));
+				double close = Double.parseDouble(tmp[TRACK_RECORD.CLOSE].replace(',', '.'));
 				long volume = Long.parseLong(tmp[TRACK_RECORD.VOLUME]);
 				barData.append(new Bar(SYMBOL, open, high, low, close, volume, 0, time));
 			}
 			return barData;
-			
+
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
@@ -154,7 +155,7 @@ public class DataProvider implements IService, IDataProvider {
 				reader.close();
 		}
 	}
-	
+
 	private static SimpleDateFormat getApproprieateFormat(final String in){
 		if(in != null){
 			final int lenght = in.length();
@@ -173,7 +174,7 @@ public class DataProvider implements IService, IDataProvider {
 			return null;
 		}
 	}
-	
+
 	public static class TRACK_RECORD {
 		public static final int DATE = 0;
 		public static final int OPEN = 1;

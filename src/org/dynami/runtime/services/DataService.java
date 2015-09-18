@@ -24,25 +24,25 @@ import org.dynami.core.config.Config;
 import org.dynami.core.data.Bar;
 import org.dynami.core.data.IData;
 import org.dynami.core.services.IDataService;
-import org.dynami.runtime.bus.Msg;
 import org.dynami.runtime.data.BarData;
+import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.impl.Service;
 import org.dynami.runtime.topics.Topics;
 
 public class DataService extends Service implements IDataService  {
 	private final Map<String, BarData> data = new ConcurrentSkipListMap<>();
-	
-	private IMsg msg = Msg.Broker;
-	
+
+	private final IMsg msg = Execution.Manager.msg();
+
 	@Override
 	public String id() {
 		return ID;
 	}
-	
+
 	@Override
 	public boolean init(Config config) throws Exception {
-		msg.subscribe(Topics.BAR.topic, (last, msg)->{
-			Bar item = (Bar)msg;
+		msg.subscribe(Topics.BAR.topic, (last, _msg)->{
+			Bar item = (Bar)_msg;
 			data.putIfAbsent(item.symbol, new BarData());
 			data.get(item.symbol).append(item);
 		});

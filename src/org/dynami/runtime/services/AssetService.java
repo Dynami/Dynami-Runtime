@@ -25,50 +25,49 @@ import org.dynami.core.assets.Asset;
 import org.dynami.core.bus.IMsg;
 import org.dynami.core.config.Config;
 import org.dynami.core.services.IAssetService;
-import org.dynami.runtime.bus.Msg;
-import org.dynami.runtime.bus.Msg2;
+import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.impl.Service;
 import org.dynami.runtime.topics.Topics;
 
 public class AssetService extends Service implements IAssetService  {
 	private final Map<String, Asset> registry = new ConcurrentSkipListMap<>();
-	
-	private IMsg msg = Msg.Broker;
-	
+
+	private final IMsg msg = Execution.Manager.msg();
+
 	@Override
 	public String id() {
 		return ID;
 	}
-	
+
 	@Override
 	public boolean init(Config config) throws Exception {
-		
-		
+
+
 		/**
 		 * When new instruments are put into Instruments Registry a link between data and orders book is created
 		 */
-		msg.subscribe(Topics.INSTRUMENT.topic, (last, msg)->{
-			final Asset instr = (Asset)msg;
+		msg.subscribe(Topics.INSTRUMENT.topic, (last, _msg)->{
+			final Asset instr = (Asset)_msg;
 			System.out.println("InstrService.init("+instr+")");
 			registry.put(instr.symbol, instr);
 			if(instr instanceof Asset.Tradable){
-				Msg2.Broker.subscribe(Topics.ORDERS_BOOK_PREFIX.topic+instr.symbol, ((Asset.Tradable)instr).book.ordersBookHandler);
+				msg.subscribe(Topics.ORDERS_BOOK_PREFIX.topic+instr.symbol, ((Asset.Tradable)instr).book.ordersBookHandler);
 			}
 		});
-		
+
 		return true;
 	}
-	
+
 	@Override
 	public Asset getBySymbol(String symbol) {
 		return registry.get(symbol);
 	}
-	
+
 	@Override
 	public Collection<Asset> getAll() {
 		return Collections.unmodifiableCollection(registry.values());
 	}
-	
+
 	@Override
 	public Collection<Asset> getRelated(final String symbol) {
 		return Collections.unmodifiableCollection(
@@ -79,7 +78,7 @@ public class AssetService extends Service implements IAssetService  {
 					.collect(Collectors.toList())
 				);
 	}
-	
+
 	@Override
 	public Asset getByIsin(String isin) {
 		return registry.values().stream()

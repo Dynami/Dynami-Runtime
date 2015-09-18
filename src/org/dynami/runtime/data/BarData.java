@@ -30,7 +30,7 @@ public class BarData implements IData {
 	
 	private final int BUFFER_SIZE = 1024;
 	private List<Bar> data = new ArrayList<>(BUFFER_SIZE);
-	private long max = 0L, min = Long.MAX_VALUE;
+	private double max = 0., min = Double.MAX_VALUE;
 	private long compression = COMPRESSION_UNIT.MINUTE;
 	
 	public BarData(){};
@@ -38,10 +38,10 @@ public class BarData implements IData {
 	private BarData(Collection<Bar> bars, long compression){
 		data.addAll(bars);
 		max = data.stream()
-				.mapToLong(Bar::getHigh)
+				.mapToDouble(Bar::getHigh)
 				.max().orElse(0L);
 		min = data.stream()
-				.mapToLong(Bar::getLow)
+				.mapToDouble(Bar::getLow)
 				.min().orElse(Long.MAX_VALUE);
 		this.compression = compression;
 	}
@@ -62,7 +62,7 @@ public class BarData implements IData {
 	public Series open() {
 		return new Series(
 				data.stream()
-				.mapToLong(Bar::getOpen)
+				.mapToDouble(Bar::getOpen)
 				.toArray());
 	}
 
@@ -70,7 +70,7 @@ public class BarData implements IData {
 	public Series high() {
 		return new Series(
 				data.stream()
-				.mapToLong(Bar::getHigh)
+				.mapToDouble(Bar::getHigh)
 				.toArray());
 	}
 
@@ -78,7 +78,7 @@ public class BarData implements IData {
 	public Series low() {
 		return new Series(
 				data.stream()
-				.mapToLong(Bar::getLow)
+				.mapToDouble(Bar::getLow)
 				.toArray());
 	}
 
@@ -86,7 +86,7 @@ public class BarData implements IData {
 	public Series close() {
 		return new Series(
 				data.stream()
-				.mapToLong(Bar::getClose)
+				.mapToDouble(Bar::getClose)
 				.toArray());
 	}
 
@@ -94,7 +94,7 @@ public class BarData implements IData {
 	public Series volume() {
 		return new Series(
 				data.stream()
-				.mapToLong(Bar::getVolume)
+				.mapToDouble(Bar::getVolume)
 				.toArray());
 	}
 
@@ -102,17 +102,17 @@ public class BarData implements IData {
 	public Series openInterest() {
 		return new Series(
 				data.stream()
-				.mapToLong(Bar::getOpenInterest)
+				.mapToDouble(Bar::getOpenInterest)
 				.toArray());
 	}
 
 	@Override
-	public long getMax() {
+	public double getMax() {
 		return max;
 	}
 
 	@Override
-	public long getMin() {
+	public double getMin() {
 		return min;
 	}
 

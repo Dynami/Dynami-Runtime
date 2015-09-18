@@ -19,13 +19,13 @@ import org.dynami.core.bus.IMsg;
 import org.dynami.core.services.ITraceService;
 import org.dynami.core.services.ITraceService.Trace.Type;
 import org.dynami.core.utils.DUtils;
-import org.dynami.runtime.bus.Msg;
+import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.impl.Service;
 import org.dynami.runtime.topics.Topics;
 
 public class TraceService extends Service implements ITraceService {
-	
-	private IMsg msg = Msg.Broker;
+
+	private final IMsg msg = Execution.Manager.msg();
 
 	@Override
 	public void info(String stage, String line) {

@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.dynami.core.IDynami;
+import org.dynami.core.bus.IMsg;
 import org.dynami.core.config.Config;
 import org.dynami.core.utils.StateMachine;
 import org.dynami.runtime.impl.StrategyExecutor;
@@ -26,18 +27,18 @@ import org.dynami.runtime.topics.Topics;
 
 /**
  * Execution manager is the service delegated to manage the whole Dynami platform, starting and stopping services and user strategy.
- * There can be only one instance of IExecutionManager per java process. 
+ * There can be only one instance of IExecutionManager per java process.
  * @author Atria
  */
 public interface IExecutionManager {
 	/**
-	 * It returns {@link IDynami} initialized interface. 
+	 * It returns {@link IDynami} initialized interface.
 	 * @return {@link IDynami}
 	 */
 	public IDynami dynami();
-	
+
 	/**
-	 * Set a custom IStrategyExecutor engine, instead of the default one {@link StrategyExecutor}. 
+	 * Set a custom IStrategyExecutor engine, instead of the default one {@link StrategyExecutor}.
 	 * If you want using a different one, invoke this method before invoking IExecutionManager::load();
 	 * <pre>Errors are propagated through {@link Topics.ERRORS}<pre>
 	 * @param engine
@@ -46,9 +47,10 @@ public interface IExecutionManager {
 	 * @see StrategyExecutor
 	 */
 	public boolean setStrategyExecutor(final Class<? extends IStrategyExecutor> engine);
-	
+
+
 	public boolean init(Config config);
-	
+
 	/**
 	 * Load and parse Strategy instance file and set strategyJarBasePath for deploying the jar dynamically.
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
@@ -58,15 +60,15 @@ public interface IExecutionManager {
 	 * @return true if all is ok, false otherwise.
 	 */
 	public boolean select(String strategyInstanceFilePath, String strategyJarBasePath);
-	
+
 	/**
-	 * Dynamically load user strategy 
+	 * Dynamically load user strategy
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
 	 * <pre>Errors are propagated through {@link Topics.ERRORS}.<pre>
 	 * @return
 	 */
 	public boolean load();
-	
+
 	/**
 	 * Starts strategy execution
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
@@ -74,7 +76,7 @@ public interface IExecutionManager {
 	 * @return
 	 */
 	public boolean run();
-	
+
 	/**
 	 * Pauses strategy execution
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
@@ -82,7 +84,7 @@ public interface IExecutionManager {
 	 * @return
 	 */
 	public boolean pause();
-	
+
 	/**
 	 * Resumes strategy execution from pause status
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
@@ -90,7 +92,7 @@ public interface IExecutionManager {
 	 * @return
 	 */
 	public boolean resume();
-	
+
 	/**
 	 * Stops strategy execution. Stop status is a final point. If you want to start again the strategy, you have to start from the beginning.
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
@@ -98,55 +100,57 @@ public interface IExecutionManager {
 	 * @return
 	 */
 	public boolean stop();
-	
+
 	/**
 	 * This function indicates whether the strategy has been loaded or not.
 	 * E.g. If the strategy is running, isLoaded() return true, because has been already loaded.
-	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods 
+	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
 	 * @return true whether the strategy has been loaded, false otherwise
 	 */
 	public boolean isLoaded();
-	
+
 	/**
 	 * This function return true if the strategy has been started, also if it is currently paused.
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
 	 * @return true whether the stategy has been started, false otherwise
 	 */
 	public boolean isStarted();
-	
+
 	/**
 	 * This function returns true if and only if it is currently running.
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
 	 * @return return true if the ExecutionManager is in status Running, false otherwise
 	 */
 	public boolean isRunning();
-	
+
 	/**
 	 * This function returns true if the strategy has been already initialized
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
 	 * @return
 	 */
 	public boolean isSelected();
-	
+
 	/**
-	 * Dynamically adds ChangeStateListeners on IExecutionManager. 
+	 * Dynamically adds ChangeStateListeners on IExecutionManager.
 	 * @param listener
 	 * @see StateMachine.ChangeStateListener
 	 */
 	public void addStateListener(final StateMachine.ChangeStateListener listener);
-	
-	
+
+
 	public boolean canMoveTo(State state);
-	
+
 	/**
 	 * Retrieves the service bus, which handles Dynami's services life cycle.
 	 * @return {@link IServiceBus}
 	 */
 	public IServiceBus getServiceBus();
-	
+
+	public IMsg msg();
+
 	/**
 	 * Describes Dynami's ExecutionManager status.
-	 * Status are linked in a work-flow in {@link StateMachine} constructor. 
+	 * Status are linked in a work-flow in {@link StateMachine} constructor.
 	 * @author Atria
 	 */
 	public static enum State implements StateMachine.IState {
@@ -158,7 +162,7 @@ public interface IExecutionManager {
 		Paused,
 		Stopped
 		;
-		
+
 		private final List<StateMachine.IState> children = new ArrayList<>();
 		@Override
 		public List<StateMachine.IState> children() {

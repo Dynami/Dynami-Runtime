@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.dynami.core.config.Config;
 import org.dynami.core.utils.DUtils;
-import org.dynami.runtime.bus.Msg;
+import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.services.AssetService;
 import org.dynami.runtime.services.DataService;
 import org.dynami.runtime.services.OrderService;
@@ -34,15 +34,15 @@ import org.dynami.runtime.topics.Topics;
 
 public interface IServiceBus {
 	public static final String ID = "IServiceBus";
-	
+
 	public void registerService(final IService service, final int priority) throws Exception;
-	
+
 	public <T> T getService(final Class<T> service, final String ID);
-	
+
 	public IService getService(String ID);
-	
+
 	public Collection<IService> getServices();
-	
+
 	public default void registerDefaultServices() throws Exception {
 		registerService(new AssetService(), 10);
 		registerService(new TraceService(), 20);
@@ -50,90 +50,90 @@ public interface IServiceBus {
 		registerService(new OrderService(), 40);
 		registerService(new PortfolioService(), 50);
 	}
-	
+
 	public default boolean initServices(final Config config){
 		boolean initiliazed = true;
 		for(IService s : getServices()){
 			try {
-				
+
 				if(!s.init(config)){
 					initiliazed = false;
-					Msg.Broker.async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "init", "Unable to init service "+s.id()));
-				}				
+					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "init", "Unable to init service "+s.id()));
+				}
 			} catch (Exception e) {
-				Msg.Broker.async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "init", DUtils.getErrorMessage(e)));
+				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "init", DUtils.getErrorMessage(e)));
 			}
 		};
 		return initiliazed;
 	}
-	
+
 	public default boolean startServices(){
 		final AtomicBoolean isOk = new AtomicBoolean(true);
 		getServices().forEach(s->{
 			try {
 				if(!s.start()){
 					isOk.set(false);
-					Msg.Broker.async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "start", "Unable to start service "+s.id()));
-				}				
+					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "start", "Unable to start service "+s.id()));
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
-				Msg.Broker.async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "start", "Error on "+s.id()+" "+DUtils.getErrorMessage(e)));
+				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "start", "Error on "+s.id()+" "+DUtils.getErrorMessage(e)));
 			}
 		});
 		return isOk.get();
 	}
-	
+
 	public default boolean stopServices(){
 		final AtomicBoolean isOk = new AtomicBoolean(true);
 		getServices().forEach(s->{
 			try {
 				if(!s.stop()){
 					isOk.set(false);
-					Msg.Broker.async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "stop", "Unable to stop service "+s.id()));
-				}				
+					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "stop", "Unable to stop service "+s.id()));
+				}
 			} catch (Exception e) {
-				Msg.Broker.async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "stop", DUtils.getErrorMessage(e)));
+				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "stop", DUtils.getErrorMessage(e)));
 			}
 		});
 		return isOk.get();
 	}
-	
+
 	public default boolean resumeServices(){
 		final AtomicBoolean isOk = new AtomicBoolean(true);
 		getServices().forEach(s->{
 			try {
 				if(!s.resume()){
 					isOk.set(false);
-					Msg.Broker.async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "resume", "Unable to resume service "+s.id()));
-				}				
+					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "resume", "Unable to resume service "+s.id()));
+				}
 			} catch (Exception e) {
-				Msg.Broker.async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "resume", DUtils.getErrorMessage(e)));
+				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "resume", DUtils.getErrorMessage(e)));
 			}
 		});
 		return isOk.get();
 	}
-	
+
 	public default boolean disposeServices(){
 		final AtomicBoolean isOk = new AtomicBoolean(true);
 		getServices().forEach(s->{
 			try {
 				if(!s.dispose()){
 					isOk.set(false);
-					Msg.Broker.async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "dispose", "Unable to dispose service "+s.id()));
+					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "dispose", "Unable to dispose service "+s.id()));
 				}
 			} catch (Exception e) {
-				Msg.Broker.async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "dispose", DUtils.getErrorMessage(e)));
+				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "dispose", DUtils.getErrorMessage(e)));
 			}
 		});
 		return isOk.get();
 	}
-	
-	
+
+
 	public static class ServiceStatus {
 		public final String serviceId;
 		public final String operation;
 		public final String message;
-		
+
 		public ServiceStatus(String serviceId, String operation, String message){
 			this.serviceId = serviceId;
 			this.operation = operation;
@@ -145,12 +145,12 @@ public interface IServiceBus {
 			return "ServiceStatus [serviceId=" + serviceId + ", operation=" + operation + ", message=" + message + "]";
 		}
 	}
-	
+
 //	public default void inject(Object obj) throws Exception {
 //		Field[] fields = obj.getClass().getDeclaredFields();
 //		for(Field f : fields){
 //			IServiceBus.Inject inject = f.getAnnotation(IServiceBus.Inject.class);
-//			
+//
 //			if(inject != null){
 //				String id = inject.value();
 //				Object s = getService(id);
@@ -161,7 +161,7 @@ public interface IServiceBus {
 //			}
 //		}
 //	}
-	
+
 	@Target({ElementType.FIELD})
 	@Retention(RetentionPolicy.RUNTIME)
 	public static @interface Inject {

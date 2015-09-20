@@ -71,7 +71,7 @@ public class PortfolioService extends Service implements IPortfolioService {
 					ClosedPosition closed = new ClosedPosition(e, p.price, p.time);
 					closedPositions.add(closed);
 
-					realized.set(realized.get()+((closed.exitPrice-closed.entryPrice)*closed.quantity*closed.pointValue));
+					realized.set(realized.get()+closed.roi());
 					openPositions.remove(p.symbol);
 					System.out.println("PortfolioService.realized( Close "+realized.get()+")");
 				} else if( abs(e.quantity + p.quantity) > abs(e.quantity)){
@@ -83,7 +83,11 @@ public class PortfolioService extends Service implements IPortfolioService {
 				} else if( Math.abs(e.quantity + p.quantity) < Math.abs(e.quantity)){
 					// decremento la posizione
 					OpenPosition newPos = new OpenPosition(e.symbol, e.quantity+p.quantity, e.entryPrice, p.time, e.pointValue, p.time);
-					realized.set(realized.get()+((p.price-e.entryPrice)*-p.quantity*e.pointValue));
+					
+					ClosedPosition closed = new ClosedPosition(e.symbol, -p.quantity, e.entryPrice, e.entryTime, p.price, p.time, e.pointValue);
+					closedPositions.add(closed);
+
+					realized.set(realized.get()+closed.roi());
 					openPositions.put(newPos.symbol, newPos);
 					System.out.println("PortfolioService.realized( "+realized.get()+") "+newPos);
 				}
@@ -159,7 +163,7 @@ public class PortfolioService extends Service implements IPortfolioService {
 		final AtomicLong unrealized = new AtomicLong(0);
 		openPositions.values().stream().forEach(o->{
 			final Asset.Tradable trad = (Asset.Tradable)assetService.getBySymbol(o.symbol);
-			double currentPrice = (o.quantity > 0)?trad.book.ask().price:trad.book.bid().price;
+			double currentPrice = (o.quantity > 0)?trad.book.bid().price:trad.book.ask().price;
 			double value = ((currentPrice - o.entryPrice)*o.quantity*o.pointValue);
 			unrealized.addAndGet(DUtils.d2l(value));
 		});

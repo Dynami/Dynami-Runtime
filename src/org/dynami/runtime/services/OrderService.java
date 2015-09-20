@@ -15,7 +15,6 @@
  */
 package org.dynami.runtime.services;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -23,7 +22,6 @@ import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -43,8 +41,8 @@ import org.dynami.runtime.topics.Topics;
 public class OrderService extends Service implements IOrderService {
 	private final AtomicBoolean shutdown = new AtomicBoolean(false);
 	private final List<OrderRequestWrapper> requests = new CopyOnWriteArrayList<>();
-	private final List<Future<?>> fillers = new ArrayList<>();
-	private final ExecutorService executor=  Executors.newCachedThreadPool();
+	//private final List<Future<?>> fillers = new ArrayList<>();
+	private final ExecutorService executor =  Executors.newCachedThreadPool();
 
 	private final IMsg msg = Execution.Manager.msg();
 
@@ -63,9 +61,9 @@ public class OrderService extends Service implements IOrderService {
 	@Override
 	public long send(OrderRequest order, IOrderHandler handler) {
 		final OrderRequestWrapper _request = new OrderRequestWrapper(order);
-//		System.out.println("OrderService.send() "+order);
 		requests.add(_request);
-		fillers.add(executor.submit(new OrderFiller(_request, handler)));
+		//fillers.add(executor.submit(new OrderFiller(_request, handler)));
+		executor.submit(new OrderFiller(_request, handler));
 		return order.id;
 	}
 
@@ -162,6 +160,7 @@ public class OrderService extends Service implements IOrderService {
 		private final IOrderHandler handler;
 		private final double price;
 		private final Asset.Tradable trad;
+//		private boolean executed = false;
 
 		public OrderFiller(OrderRequestWrapper _request, IOrderHandler handler){
 			this.orderReq = _request;
@@ -170,9 +169,9 @@ public class OrderService extends Service implements IOrderService {
 			trad = (Asset.Tradable)Execution.Manager.dynami().assets().getBySymbol(request.symbol);
 			if(orderReq.request instanceof MarketOrder){
 				if(request.quantity>0){
-					this.price = trad.book.ask(1).price;
+					this.price = trad.book.ask().price;
 				} else {
-					this.price = trad.book.bid(1).price;
+					this.price = trad.book.bid().price;
 				}
 			} else {
 				price = request.price;
@@ -187,34 +186,36 @@ public class OrderService extends Service implements IOrderService {
 					handler.onOrderCancelled(Execution.Manager.dynami(), request);
 					return;
 				} else if((request.quantity > 0
-						&& trad.book.bid(1).price <= price
-						&& trad.book.bid(1).quantity >= orderReq.getRemainingQuantity())){
+						&& price >= trad.book.ask().price
+						&& trad.book.ask().quantity >= orderReq.getRemainingQuantity())){
 
 					msg.async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, orderReq.getRemainingQuantity(), request.time));
 					orderReq.setStatus(OrderRequestWrapper.Status.Executed);
 					orderReq.setRemainingQuantity(0);
 					handler.onOrderExecuted(Execution.Manager.dynami(), request);
+//					executed = true;
 					break;
 				} else if((request.quantity > 0
-						&& trad.book.bid(1).price <= price
-						&& trad.book.bid(1).quantity < orderReq.getRemainingQuantity())){
+						&& price >= trad.book.ask().price
+						&& trad.book.ask().quantity < orderReq.getRemainingQuantity())){
 
 					orderReq.setStatus(OrderRequestWrapper.Status.PartiallyExecuted);
 					orderReq.setRemainingQuantity(orderReq.getRemainingQuantity()-trad.book.bid(1).quantity);
 					msg.async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, trad.book.bid(1).quantity, request.time));
 					handler.onOrderPartiallyExecuted(Execution.Manager.dynami(), request);
 				} else if((request.quantity < 0
-						&& trad.book.ask(1).price >= price
-						&& trad.book.ask(1).quantity >= orderReq.getRemainingQuantity())){
+						&& trad.book.bid().price >= price
+						&& trad.book.bid().quantity >= orderReq.getRemainingQuantity())){
 
 					msg.async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, -orderReq.getRemainingQuantity(), request.time));
 					orderReq.setStatus(OrderRequestWrapper.Status.Executed);
 					orderReq.setRemainingQuantity(0);
 					handler.onOrderExecuted(Execution.Manager.dynami(), request);
+//					executed = true;
 					break;
 				} else if((request.quantity < 0
-						&& trad.book.bid(1).price > price
-						&& trad.book.bid(1).quantity >= orderReq.getRemainingQuantity())){
+						&& trad.book.ask().price > price
+						&& trad.book.ask().quantity >= orderReq.getRemainingQuantity())){
 
 					msg.async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, -trad.book.ask(1).quantity, request.time));
 					orderReq.setStatus(OrderRequestWrapper.Status.PartiallyExecuted);
@@ -222,16 +223,16 @@ public class OrderService extends Service implements IOrderService {
 					handler.onOrderPartiallyExecuted(Execution.Manager.dynami(), request);
 				}
 			}
-
 			if(request.conditions().size() > 0){
-				Collection<IOrderCondition> conditions = request.conditions();
+				final Collection<IOrderCondition> conditions = request.conditions();
 				while(!shutdown.get()){
-					for(IOrderCondition c: conditions){
+					for(final IOrderCondition c: conditions){
 						if(c.check(request.quantity, trad.book.bid(), trad.book.ask())){
-							OrderService.this.send(new MarketOrder(request.symbol, -request.quantity, c.getClass().getSimpleName()));
+							OrderService.this.send(new MarketOrder(request.symbol, -request.quantity, c.toString()));
 							return;
 						}
 					}
+					try { Thread.sleep(1, 0); } catch (InterruptedException e) {}
 				}
 			}
 		}

@@ -17,7 +17,6 @@ import org.dynami.core.data.Bar;
 import org.dynami.core.data.IData;
 import org.dynami.core.utils.DUtils;
 import org.dynami.runtime.IService;
-import org.dynami.runtime.bus.Msg;
 import org.dynami.runtime.data.BarData;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
@@ -32,7 +31,7 @@ public class DataProvider implements IService, IDataProvider {
 	private static final String SYMBOL = "FTSEMIB";
 	private IData historical;
 	private long clockFrequence = 1000;
-	private long bidAskSpread = DUtils.d2l(5.0);
+	private double bidAskSpread = 5.0;
 
 	private final AtomicBoolean isStarted = new AtomicBoolean(true);
 	private final AtomicBoolean isRunning = new AtomicBoolean(false);
@@ -71,9 +70,9 @@ public class DataProvider implements IService, IDataProvider {
 						Bar b = historical.get(idx.getAndIncrement());
 						System.out.println("DataProvider.init(...).new Runnable() {...}.run() "+b);
 						Book.Orders bid = new Book.Orders(b.symbol, b.time, Side.BID, 1, b.close-bidAskSpread/2, 100);
+						msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic+b.symbol, bid);
 						Book.Orders ask = new Book.Orders(b.symbol, b.time, Side.ASK, 1, b.close+bidAskSpread/2, 100);
-						msg.async(Topics.ORDERS_BOOK_PREFIX.topic+b.symbol, bid);
-						msg.async(Topics.ORDERS_BOOK_PREFIX.topic+b.symbol, ask);
+						msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic+b.symbol, ask);
 						msg.async(Topics.BAR.topic, b);
 
 						msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(b.symbol, Event.Type.OnBarClose, b));

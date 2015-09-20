@@ -41,7 +41,7 @@ public class MsgBrokerTest {
 	}
 
 	public static void testMsg2() throws Exception {
-		final long ITERATIONS = 100_000L;
+		final long ITERATIONS = 20L;
 		final String TOPIC = "p";
 		final AtomicLong counter = new AtomicLong(0);
 		final AtomicLong _counter_ = new AtomicLong(0);
@@ -55,6 +55,7 @@ public class MsgBrokerTest {
 		long start_sending = System.nanoTime();
 		for(long i = 0; i < ITERATIONS; i++){
 			Msg2.Broker.async(TOPIC, i);
+			Thread.sleep(1);
 		}
 
 		long end_sending = System.nanoTime();

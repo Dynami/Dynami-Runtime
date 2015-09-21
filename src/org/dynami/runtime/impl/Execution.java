@@ -149,18 +149,6 @@ public enum Execution implements IExecutionManager {
 	}
 
 	@Override
-	public boolean resume() {
-		if(stateMachine.canChangeState(State.Running)){
-			if(serviceBus.startServices()){
-				return stateMachine.changeState(State.Running);
-			}
-			return false;
-		} else {
-			return false;
-		}
-	}
-
-	@Override
 	public boolean stop() {
 		if(stateMachine.canChangeState(State.Stopped) && serviceBus.stopServices()){
 			return stateMachine.changeState(State.Stopped);

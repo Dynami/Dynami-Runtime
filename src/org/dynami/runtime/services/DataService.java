@@ -19,9 +19,9 @@ import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import org.dynami.core.Event;
 import org.dynami.core.bus.IMsg;
 import org.dynami.core.config.Config;
-import org.dynami.core.data.Bar;
 import org.dynami.core.data.IData;
 import org.dynami.core.services.IDataService;
 import org.dynami.runtime.data.BarData;
@@ -41,10 +41,12 @@ public class DataService extends Service implements IDataService  {
 
 	@Override
 	public boolean init(Config config) throws Exception {
-		msg.subscribe(Topics.BAR.topic, (last, _msg)->{
-			Bar item = (Bar)_msg;
-			data.putIfAbsent(item.symbol, new BarData());
-			data.get(item.symbol).append(item);
+		msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, _msg)->{
+			Event e = (Event)_msg;
+			if(Event.Type.OnBarClose.equals(e.type)){
+				data.putIfAbsent(e.bar.symbol, new BarData());
+				data.get(e.bar.symbol).append(e.bar);
+			}
 		});
 		return super.init(config);
 	}

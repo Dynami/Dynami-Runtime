@@ -15,20 +15,18 @@
  */
 package org.dynami.runtime.topics;
 
-import org.dynami.core.services.ITraceService;
-import org.dynami.runtime.IServiceBus.ServiceStatus;
-
 import javax.swing.text.Position;
 
 import org.dynami.core.Event;
 import org.dynami.core.assets.Asset;
 import org.dynami.core.assets.Book;
-import org.dynami.core.data.Bar;
+import org.dynami.core.services.ITraceService;
+import org.dynami.runtime.IServiceBus.ServiceStatus;
 
 public enum Topics {
 	TRACE("a", ITraceService.Trace.class),
 	TICK("b", Book.Orders.class),
-	BAR("c", Bar.class),
+//	BAR("c", Bar.class),
 	INSTRUMENT("d", Asset.class),
 	ASK_ORDERS_BOOK_PREFIX("ea/", Book.Orders.class),
 	BID_ORDERS_BOOK_PREFIX("eb/", Book.Orders.class),

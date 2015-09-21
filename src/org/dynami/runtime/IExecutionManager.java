@@ -86,14 +86,6 @@ public interface IExecutionManager {
 	public boolean pause();
 
 	/**
-	 * Resumes strategy execution from pause status
-	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
-	 * <pre>Errors are propagated through {@link Topics.ERRORS}.<pre>
-	 * @return
-	 */
-	public boolean resume();
-
-	/**
 	 * Stops strategy execution. Stop status is a final point. If you want to start again the strategy, you have to start from the beginning.
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
 	 * <pre>Errors are propagated through {@link Topics.ERRORS}.<pre>

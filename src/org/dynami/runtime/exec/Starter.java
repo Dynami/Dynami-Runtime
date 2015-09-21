@@ -19,6 +19,8 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.dynami.core.portfolio.OpenPosition;
+import org.dynami.core.services.IPortfolioService;
 import org.dynami.runtime.IServiceBus.ServiceStatus;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.moke.DataProvider;
@@ -63,11 +65,11 @@ public class Starter {
 			if(Execution.Manager.init(null)){
 				System.out.println("Use the following commands to handle strategy execution:");
 				System.out.println(Commands.LOAD+"\tto load");
-				System.out.println(Commands.RUN+"\tto start");
+				System.out.println(Commands.RUN+"\tto run/resume");
 				System.out.println(Commands.PAUSE+"\tto pause");
-				System.out.println(Commands.RESUME+"\tto resume from pause");
 				System.out.println(Commands.STOP+"\tto stop");
 				System.out.println(Commands.EXIT+"\tto shutdown Dynami");
+				System.out.println(Commands.PRINT_STATUS+"\tto print strategy status");
 
 				listener.start();
 			} else {
@@ -124,10 +126,21 @@ public class Starter {
 			}
 
 			break;
-		case Commands.RESUME:
+		case Commands.PRINT_STATUS:
 			try {
-				boolean executed = Execution.Manager.resume();
-				System.err.println(Commands.START_RESPONSE+cmd+"_"+((executed)?Commands.RESPONSE_EXECUTED:Commands.RESPONSE_NOT_EXECUTED)+Commands.END_RESPONSE);
+				//boolean executed = !Execution.Manager.isRunning();
+				IPortfolioService portfolio = Execution.Manager.dynami().portfolio();
+				System.out.println("Open positions:");
+				for(OpenPosition p:portfolio.getOpenPosition()){
+					System.out.println(p);
+					System.out.println("-------------------------------------");
+				}
+				System.out.println();
+				
+				System.out.printf("Budget	 : %6.2f\n", portfolio.getCurrentBudget());
+				System.out.printf("Realized	 : %6.2f\n", portfolio.realized());
+				System.out.printf("Unrealized: %6.2f\n", portfolio.unrealized());
+				//System.err.println(Commands.START_RESPONSE+cmd+"_"+((executed)?Commands.RESPONSE_EXECUTED:Commands.RESPONSE_NOT_EXECUTED)+Commands.END_RESPONSE);
 			} catch (Exception e) {
 				System.err.println(Commands.START_RESPONSE+cmd+"_"+Commands.RESPONSE_NOT_EXECUTED+Commands.END_RESPONSE);
 			}
@@ -161,7 +174,7 @@ public class Starter {
 		public static final String LOAD = "L";
 		public static final String RUN = "R";
 		public static final String PAUSE = "P";
-		public static final String RESUME = "X";
+		public static final String PRINT_STATUS = "X";
 		public static final String STOP = "S";
 		public static final String EXIT = "E";
 

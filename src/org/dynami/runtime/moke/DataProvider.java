@@ -65,21 +65,42 @@ public class DataProvider implements IService, IDataProvider {
 			private final AtomicInteger idx = new AtomicInteger(0);
 			@Override
 			public void run() {
+//				int OPEN = 0, HIGH = 1, LOW = 2 , CLOSE = 3;
 				while(isStarted.get()){
 					if(isRunning.get()){
 						Bar b = historical.get(idx.getAndIncrement());
 						System.out.println("DataProvider.init(...).new Runnable() {...}.run() "+b);
+//						HIGH = (Math.random()>.5)?1:2;
+//						LOW = (HIGH == 1)?2:1;
+//						double price = b.close;
+//						for(int i = 0 ; i < 4; i++){
+//							if(i == OPEN){
+//								price = b.open;
+//							} else if(i == HIGH){
+//								price = b.high;
+//							} else if(i == LOW){
+//								price = b.low;
+//							} else if(i == CLOSE){
+//								price = b.close;
+//							}
+//							Book.Orders bid = new Book.Orders(b.symbol, b.time, Side.BID, 1, price-bidAskSpread/2, 100);
+//							msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic+b.symbol, bid);
+//							Book.Orders ask = new Book.Orders(b.symbol, b.time, Side.ASK, 1, price+bidAskSpread/2, 100);
+//							msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic+b.symbol, ask);
+//							
+//							
+//							try { Thread.sleep(clockFrequence); } catch (InterruptedException e) {}
+//						}
+						
 						Book.Orders bid = new Book.Orders(b.symbol, b.time, Side.BID, 1, b.close-bidAskSpread/2, 100);
 						msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic+b.symbol, bid);
 						Book.Orders ask = new Book.Orders(b.symbol, b.time, Side.ASK, 1, b.close+bidAskSpread/2, 100);
 						msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic+b.symbol, ask);
-						msg.async(Topics.BAR.topic, b);
+						//msg.async(Topics.BAR.topic, b);
 
 						msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(b.symbol, Event.Type.OnBarClose, b));
 					}
-					try {
-						Thread.sleep(clockFrequence);
-					} catch (InterruptedException e) {}
+					try { Thread.sleep(clockFrequence); } catch (InterruptedException e) {}
 				}
 			}
 		}).start();

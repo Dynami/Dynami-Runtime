@@ -89,7 +89,7 @@ public class Starter {
 					if (reader.ready()) {
 						parseCommand(reader.readLine());
 					}
-					Thread.sleep(0, 500);
+					Thread.sleep(1);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -137,8 +137,8 @@ public class Starter {
 				}
 				System.out.println();
 				
-				System.out.printf("Budget	 : %6.2f\n", portfolio.getCurrentBudget());
-				System.out.printf("Realized	 : %6.2f\n", portfolio.realized());
+				System.out.printf("Budget    : %6.2f\n", portfolio.getCurrentBudget());
+				System.out.printf("Realized  : %6.2f\n", portfolio.realized());
 				System.out.printf("Unrealized: %6.2f\n", portfolio.unrealized());
 				//System.err.println(Commands.START_RESPONSE+cmd+"_"+((executed)?Commands.RESPONSE_EXECUTED:Commands.RESPONSE_NOT_EXECUTED)+Commands.END_RESPONSE);
 			} catch (Exception e) {

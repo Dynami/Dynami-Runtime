@@ -24,11 +24,8 @@ import java.util.Enumeration;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
-import java.util.zip.ZipEntry;
 
 import org.dynami.core.IStrategy;
-import org.dynami.core.descriptors.StrategyDescriptor;
-import org.dynami.runtime.json.JSON;
 
 public class StrategyClassLoader extends URLClassLoader {
 
@@ -63,8 +60,8 @@ public class StrategyClassLoader extends URLClassLoader {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public AddonDescriptor<IStrategy> getAddonDescriptor(){
-		AddonDescriptor<IStrategy> addon = null;
+	public Class<IStrategy> getStrategyClass(){
+		//AddonDescriptor<IStrategy> addon = null;
 		try {
 			JarEntry entry;
 			String className;
@@ -90,27 +87,28 @@ public class StrategyClassLoader extends URLClassLoader {
 					}
 				}
 			}
+			return strategy;
 
-			if (strategy != null) {
-				ZipEntry descriptorEntry = jarFile.getEntry("META-INF/"+ StrategyDescriptor.FILE_NAME);
-				if (descriptorEntry == null) {
-					return addon;
-				}
-				addon = new AddonDescriptor<IStrategy>(strategy);
-				addon.setDescriptor(loadStrategyDescriptor(jarFile, descriptorEntry));
-				return addon;
-			}
+//			if (strategy != null) {
+//				ZipEntry descriptorEntry = jarFile.getEntry("META-INF/"+ StrategyDescriptor.FILE_NAME);
+//				if (descriptorEntry == null) {
+//					return addon;
+//				}
+//				addon = new AddonDescriptor<IStrategy>(strategy);
+//				//addon.setDescriptor(loadStrategyDescriptor(jarFile, descriptorEntry));
+//				return addon;
+//			}
 		} catch(Exception e){
 			e.printStackTrace();
 		}
-		return addon;
+		return null;
 	}
 	
-	private StrategyDescriptor loadStrategyDescriptor(final JarFile jarFile, final ZipEntry descriptorEntry) throws Exception{
-		try(InputStream inputStream = jarFile.getInputStream(descriptorEntry)){
-			return JSON.Parser.deserialize(inputStream);
-		}
-	}
+//	private StrategyDescriptor loadStrategyDescriptor(final JarFile jarFile, final ZipEntry descriptorEntry) throws Exception{
+//		try(InputStream inputStream = jarFile.getInputStream(descriptorEntry)){
+//			return JSON.Parser.deserialize(inputStream);
+//		}
+//	}
 
 	/** Close references to opened zip files (via getResourceAsStream) */
 	public void close() {
@@ -121,28 +119,28 @@ public class StrategyClassLoader extends URLClassLoader {
 		}
 	}
 	
-	public static class AddonDescriptor<T> {
-		private Class<T> clazz;
-		private StrategyDescriptor descriptor;
-		
-		public AddonDescriptor(Class<T> clazz) {
-			this.clazz = clazz;
-		}
-
-		public Class<T> getClazz() {
-			return clazz;
-		}
-
-		public void setClazz(Class<T> clazz) {
-			this.clazz = clazz;
-		}
-
-		public StrategyDescriptor getDescriptor() {
-			return descriptor;
-		}
-
-		public void setDescriptor(StrategyDescriptor descriptor) {
-			this.descriptor = descriptor;
-		}
-	}
+//	public static class AddonDescriptor<T> {
+//		private Class<T> clazz;
+//		private StrategyDescriptor descriptor;
+//		
+//		public AddonDescriptor(Class<T> clazz) {
+//			this.clazz = clazz;
+//		}
+//
+//		public Class<T> getClazz() {
+//			return clazz;
+//		}
+//
+//		public void setClazz(Class<T> clazz) {
+//			this.clazz = clazz;
+//		}
+//
+//		public StrategyDescriptor getDescriptor() {
+//			return descriptor;
+//		}
+//
+//		public void setDescriptor(StrategyDescriptor descriptor) {
+//			this.descriptor = descriptor;
+//		}
+//	}
 }

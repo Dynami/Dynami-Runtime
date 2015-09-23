@@ -232,7 +232,7 @@ public class OrderService extends Service implements IOrderService {
 							return;
 						}
 					}
-					try { Thread.sleep(1, 0); } catch (InterruptedException e) {}
+					try { Thread.sleep(0, 1); } catch (InterruptedException e) {}
 				}
 			}
 		}

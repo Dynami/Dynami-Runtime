@@ -27,7 +27,6 @@ import org.dynami.runtime.IExecutionManager;
 import org.dynami.runtime.IServiceBus;
 import org.dynami.runtime.IStrategyExecutor;
 import org.dynami.runtime.bus.Msg2;
-import org.dynami.runtime.impl.StrategyClassLoader.AddonDescriptor;
 import org.dynami.runtime.json.JSON;
 import org.dynami.runtime.models.StrategyInstance;
 import org.dynami.runtime.topics.Topics;
@@ -107,8 +106,9 @@ public enum Execution implements IExecutionManager {
 		if(stateMachine.canChangeState(State.Loaded)){
 			try {
 				try(StrategyClassLoader loader = new StrategyClassLoader(strategyJarBasePath+File.separator+instance.getStrategyDescriptor().getJarName(), getClass().getClassLoader())){
-					final AddonDescriptor<IStrategy> addon = loader.getAddonDescriptor();
-					final IStrategy strategy = addon.getClazz().newInstance();
+//					final AddonDescriptor<IStrategy> addon = loader.getAddonDescriptor();
+//					final IStrategy strategy = addon.getClazz().newInstance();
+					final IStrategy strategy = loader.getStrategyClass().newInstance();
 
 					engine.setup(serviceBus);
 					engine.load(strategy);

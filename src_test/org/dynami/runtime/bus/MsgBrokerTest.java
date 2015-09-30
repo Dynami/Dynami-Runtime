@@ -6,8 +6,32 @@ public class MsgBrokerTest {
 
 	public static void main(String[] args) {
 		try {
+			final int A = 1;
+			final int B = 3;
+			final int C = 4;
+			final int D = 8;
+			final int E = 16;
+			
+			int c = A|B;
+			//System.out.println(c);
+//			System.out.println(c^A);
+//			System.out.println(c^B);
+//			System.out.println(c^C);
+//			System.out.println(c^D);
+//			System.out.println(c^E);
+			
+			boolean isA = c > (c^A);
+			boolean isB = c > (c^B);
+			boolean isC = c > (c^C);
+			boolean isD = c > (c^D);
+			boolean isE = c > (c^E);
+			System.out.println("A "+isA);
+			System.out.println("B "+isB);
+			System.out.println("C "+isC);
+			System.out.println("D "+isD);
+			System.out.println("E "+isE);
 			//MsgBrokerTest.testMsg1();
-			MsgBrokerTest.testMsg2();
+			//MsgBrokerTest.testMsg2();
 		} catch (Exception e) {
 			e.printStackTrace(System.out);
 		}

@@ -48,7 +48,7 @@ public class Starter {
 		try {
 			new Starter().execute(new String[]{
 					"-file", "C:/Users/user/Desktop/test/strategy/org.sample.strategy.dynami",
-					"-strategy_lib", "C:/Users/user/Desktop/test/strategy"});
+					"-strategy_lib", "C:/Users/user/Desktop/test/strategy/org.sample.strategy_v1.jar"});
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

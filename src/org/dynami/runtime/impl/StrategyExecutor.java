@@ -55,11 +55,11 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 		this.strategy = strategy;
 		this.stage = strategy.startsWith();
 
-		Execution.Manager.msg().subscribe(Topics.STRATEGY_EVENT.topic, (last, _msg)->{
+		Execution.Manager.msg().subscribe(Topics.STRATEGY_EVENT.topic, (last, msg)->{
 			if(last){
-				Event event = (Event)_msg;
+				Event event = (Event)msg;
 				lastIncomingEvent.set(event);
-				lastExecutedEvent.set( exec(lastIncomingEvent.get()));
+				lastExecutedEvent.set(exec(lastIncomingEvent.get()));
 			}
 		});
 

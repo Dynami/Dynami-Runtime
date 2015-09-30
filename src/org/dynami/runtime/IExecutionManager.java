@@ -56,10 +56,10 @@ public interface IExecutionManager {
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
 	 * <pre>Errors are propagated through {@link MsgTopics.ERRORS}.<pre>
 	 * @param strategyInstanceFilePath
-	 * @param strategyJarBasePath
+	 * @param strategyJarPath
 	 * @return true if all is ok, false otherwise.
 	 */
-	public boolean select(String strategyInstanceFilePath, String strategyJarBasePath);
+	public boolean select(String strategyInstanceFilePath, String strategyJarPath);
 
 	/**
 	 * Dynamically load user strategy

@@ -36,8 +36,8 @@ public enum Execution implements IExecutionManager {
 
 	private final IServiceBus serviceBus = new ServiceBus();
 	private IStrategyExecutor engine = new StrategyExecutor();
-	private StrategyInstance instance;
-	private String strategyJarBasePath;
+	private StrategyInstance strategyInstance;
+	private String strategyJarPath;
 	private IDynami dynami = (IDynami)engine;
 
 
@@ -86,11 +86,11 @@ public enum Execution implements IExecutionManager {
 	}
 
 	@Override
-	public boolean select(String strategyInstanceFilePath, String strategyJarBasePath) {
+	public boolean select(String strategyInstanceFilePath, String strategyJarPath) {
 		try {
 			if(stateMachine.canChangeState(State.Selected)){
-				instance = JSON.Parser.deserialize(new File(strategyInstanceFilePath));
-				this.strategyJarBasePath = strategyJarBasePath;
+				strategyInstance = JSON.Parser.deserialize(new File(strategyInstanceFilePath));
+				this.strategyJarPath = strategyJarPath;
 				return stateMachine.changeState(State.Selected);
 			} else {
 				return false;
@@ -105,7 +105,7 @@ public enum Execution implements IExecutionManager {
 	public boolean load() {
 		if(stateMachine.canChangeState(State.Loaded)){
 			try {
-				try(StrategyClassLoader loader = new StrategyClassLoader(strategyJarBasePath+File.separator+instance.getStrategyDescriptor().getJarName(), getClass().getClassLoader())){
+				try(StrategyClassLoader loader = new StrategyClassLoader(strategyJarPath, getClass().getClassLoader())){
 //					final AddonDescriptor<IStrategy> addon = loader.getAddonDescriptor();
 //					final IStrategy strategy = addon.getClazz().newInstance();
 					final IStrategy strategy = loader.getStrategyClass().newInstance();

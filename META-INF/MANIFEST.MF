@@ -8,4 +8,5 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ClassPath: .,
  libs/flexjson-2.1.jar,
  libs/jcommander.jar
-Require-Bundle: org.dynami.core;bundle-version="1.0.0"
+Require-Bundle: org.dynami.core;bundle-version="1.0.0",
+ org.dynami.ta;bundle-version="1.0.0"

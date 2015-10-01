@@ -15,23 +15,20 @@
  */
 package org.dynami.runtime.services;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.dynami.core.assets.Asset;
+import org.dynami.core.assets.Book;
 import org.dynami.core.bus.IMsg;
 import org.dynami.core.orders.MarketOrder;
 import org.dynami.core.orders.OrderRequest;
-import org.dynami.core.orders.OrderRequest.IOrderCondition;
 import org.dynami.core.portfolio.ExecutedOrder;
 import org.dynami.core.services.IOrderService;
 import org.dynami.runtime.impl.Execution;
@@ -41,10 +38,14 @@ import org.dynami.runtime.topics.Topics;
 public class OrderService extends Service implements IOrderService {
 	private final AtomicBoolean shutdown = new AtomicBoolean(false);
 	private final List<OrderRequestWrapper> requests = new CopyOnWriteArrayList<>();
-	//private final List<Future<?>> fillers = new ArrayList<>();
-	private final ExecutorService executor =  Executors.newCachedThreadPool();
 
 	private final IMsg msg = Execution.Manager.msg();
+	
+	private final List<PendingConditions> pendingConditions = new CopyOnWriteArrayList<>();
+	
+	public static enum Status {
+		Pending, Executed, Rejected, PartiallyExecuted, Cancelled;
+	};
 
 	@Override
 	public String id() {
@@ -54,16 +55,12 @@ public class OrderService extends Service implements IOrderService {
 	@Override
 	public boolean dispose() {
 		shutdown.set(true);
-		executor.shutdown();
 		return super.dispose();
 	}
 
 	@Override
 	public long send(OrderRequest order, IOrderHandler handler) {
-		final OrderRequestWrapper _request = new OrderRequestWrapper(order);
-		requests.add(_request);
-		//fillers.add(executor.submit(new OrderFiller(_request, handler)));
-		executor.submit(new OrderFiller(_request, handler));
+		requests.add(new OrderRequestWrapper(order, handler));
 		return order.id;
 	}
 
@@ -86,9 +83,10 @@ public class OrderService extends Service implements IOrderService {
 		Optional<OrderRequestWrapper> opt = requests.stream().filter(r->r.getRequest().id == id).findFirst();
 		if(opt.isPresent()){
 			OrderRequestWrapper orderReq = opt.get();
-			OrderRequestWrapper.Status status = orderReq.getStatus();
-			if(status.equals(OrderRequestWrapper.Status.Pending) || status.equals(OrderRequestWrapper.Status.PartiallyExecuted)){
-				orderReq.setStatus(OrderRequestWrapper.Status.Cancelled);
+			Status status = orderReq.getStatus();
+			if(status.equals(Status.Pending) || status.equals(Status.PartiallyExecuted)){
+				orderReq.setStatus(Status.Cancelled);
+				orderReq.cancelOrderRequest();
 				return true;
 			} else {
 				return false;
@@ -102,7 +100,7 @@ public class OrderService extends Service implements IOrderService {
 	public List<OrderRequest> getPendingOrders() {
 		return Collections.unmodifiableList(
 				requests.stream()
-				.filter(r->r.getStatus().equals(OrderRequestWrapper.Status.Pending))
+				.filter(r->r.getStatus().equals(Status.Pending))
 				.map(OrderRequestWrapper::getRequest)
 				.collect(Collectors.toList()));
 	}
@@ -110,64 +108,79 @@ public class OrderService extends Service implements IOrderService {
 	@Override
 	public boolean thereArePendingOrders() {
 		return requests.stream()
-				.anyMatch(r->r.getStatus().equals(OrderRequestWrapper.Status.Pending));
+				.anyMatch(r->r.getStatus().equals(Status.Pending));
 	}
 
 	@Override
 	public boolean thereArePendingOrders(String symbol) {
 		return requests.stream()
-				.allMatch(r-> r.getStatus().equals(OrderRequestWrapper.Status.Pending) && r.request.symbol.equals(symbol));
+				.allMatch(r-> r.getStatus().equals(Status.Pending) && r.request.symbol.equals(symbol));
 	}
-
-	private static class OrderRequestWrapper {
+	
+	private class PendingConditions {
 		private final OrderRequest request;
-		private final AtomicReference<Status> status = new AtomicReference<Status>(Status.Pending);
-		private final AtomicLong remainingQuantity = new AtomicLong(0);
-
-		public OrderRequestWrapper(OrderRequest request){
+		private final List<?> parent;
+		
+		public PendingConditions(OrderRequest request, List<?> parent){
 			this.request = request;
-			remainingQuantity.set( (request.quantity>0)?request.quantity:-request.quantity);
+			this.parent = parent;
+			if(request.quantity > 0){
+				Execution.Manager.msg().subscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
+			} else {
+				Execution.Manager.msg().subscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, askHandler);
+			}
 		}
-
-		public static enum Status {
-			Pending, Executed, Rejected, PartiallyExecuted, Cancelled;
+		
+		private final IMsg.Handler bidHandler = new IMsg.Handler(){
+			boolean invalidateMe = false;
+			public void update(boolean last, Object msg) {
+				if(!invalidateMe){
+					request.conditions().forEach(cond->{
+						if(cond.check(request.quantity, (Book.Orders)msg, null)){
+							Execution.Manager.msg().unsubscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, this);
+							OrderService.this.send(new MarketOrder(request.symbol, -request.quantity, cond.toString()));
+							parent.remove(PendingConditions.this);
+							invalidateMe = true;
+							return;
+						}
+					});
+				}
+			};
 		};
+		
 
-		public OrderRequest getRequest() {
-			return request;
-		}
-
-		public Status getStatus() {
-			return status.get();
-		}
-
-		public void setStatus(Status status){
-			this.status.set(status);
-		}
-
-		public long getRemainingQuantity() {
-			return remainingQuantity.get();
-		}
-
-		public void setRemainingQuantity(long quantity){
-			remainingQuantity.set(quantity);
-		}
+		private final IMsg.Handler askHandler = new IMsg.Handler(){
+			boolean invalidateMe = false;
+			public void update(boolean last, Object msg) {
+				if(!invalidateMe){
+					request.conditions().forEach(cond->{
+						if(cond.check(request.quantity, null, (Book.Orders)msg)){
+							Execution.Manager.msg().unsubscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, this);
+							OrderService.this.send(new MarketOrder(request.symbol, -request.quantity, cond.toString()));
+							parent.remove(PendingConditions.this);
+							invalidateMe = true;
+							return;
+						}
+					});
+				}
+			};
+		}; 
 	}
 
-	private class OrderFiller implements Runnable {
-		private final OrderRequestWrapper orderReq;
+	private class OrderRequestWrapper {
 		private final OrderRequest request;
 		private final IOrderHandler handler;
+		private final AtomicReference<Status> status = new AtomicReference<Status>(Status.Pending);
+		private final AtomicLong remainingQuantity = new AtomicLong(0);
 		private final double price;
-		private final Asset.Tradable trad;
-//		private boolean executed = false;
-
-		public OrderFiller(OrderRequestWrapper _request, IOrderHandler handler){
-			this.orderReq = _request;
-			this.request = _request.request;
+		
+		public OrderRequestWrapper(OrderRequest request, IOrderHandler handler){
+			this.request = request;
 			this.handler = handler;
-			trad = (Asset.Tradable)Execution.Manager.dynami().assets().getBySymbol(request.symbol);
-			if(orderReq.request instanceof MarketOrder){
+			remainingQuantity.set(Math.abs(request.quantity));
+			
+			final Asset.Tradable trad = Execution.Manager.dynami().assets().getBySymbol(request.symbol).asTradable();
+			if(request instanceof MarketOrder){
 				if(request.quantity>0){
 					this.price = trad.book.ask().price;
 				} else {
@@ -176,65 +189,94 @@ public class OrderService extends Service implements IOrderService {
 			} else {
 				price = request.price;
 			}
+			if(request.quantity>0){
+				msg.subscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, askHandler);
+			} else if(request.quantity<0){
+				msg.subscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
+			}
+		}
+		
+		public boolean cancelOrderRequest(){
+			if(status.equals(Status.Pending) 
+				|| status.equals(Status.PartiallyExecuted)){
+				
+				msg.unsubscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, askHandler);
+				msg.unsubscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
+				setRemainingQuantity(0);
+				handler.onOrderCancelled(Execution.Manager.dynami(), request);
+				return true;
+			}
+			return false;
+		}
+		
+		private final IMsg.Handler askHandler = new IMsg.Handler(){
+			boolean invalidateMe = false;
+			public void update(boolean last, Object _msg) {
+				if(!invalidateMe){
+					Book.Orders orders = (Book.Orders)_msg;
+					if(price >= orders.price && orders.quantity >= getRemainingQuantity()){
+						msg.async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, getRemainingQuantity(), request.time));
+						status.set(Status.Executed);
+						setRemainingQuantity(0);
+						handler.onOrderExecuted(Execution.Manager.dynami(), request);
+						if(request.conditions().size() > 0){
+							pendingConditions.add(new PendingConditions(request, pendingConditions));
+						}
+						msg.unsubscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, this);
+						invalidateMe = true;
+					} else if(price >= orders.price && orders.quantity < getRemainingQuantity()){
+						status.set(Status.PartiallyExecuted);
+						setRemainingQuantity(getRemainingQuantity()-orders.quantity);
+						msg.async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, orders.quantity, request.time));
+						handler.onOrderPartiallyExecuted(Execution.Manager.dynami(), request);
+					}
+				}
+			};
+		};
+		
+		private final IMsg.Handler bidHandler = new IMsg.Handler(){
+			boolean invalidateMe = false;
+			public void update(boolean last, Object _msg) {
+				if(!invalidateMe){
+					Book.Orders orders = (Book.Orders)_msg;
+					if(price <= orders.price && orders.quantity >= getRemainingQuantity()){
+						msg.async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, -getRemainingQuantity(), request.time));
+						status.set(Status.Executed);
+						setRemainingQuantity(0);
+						handler.onOrderExecuted(Execution.Manager.dynami(), request);
+						if(request.conditions().size() > 0){
+							pendingConditions.add(new PendingConditions(request, pendingConditions));
+						}
+						msg.unsubscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, this);
+						invalidateMe = true;
+					} else if(price <= orders.price && orders.quantity > getRemainingQuantity()){
+						status.set(Status.PartiallyExecuted);
+						setRemainingQuantity(getRemainingQuantity()-orders.quantity);
+						msg.async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, -orders.quantity, request.time));
+						handler.onOrderPartiallyExecuted(Execution.Manager.dynami(), request);
+					}
+				}
+			};
+		};
+		
+		public OrderRequest getRequest() {
+			return request;
 		}
 
-		@Override
-		public void run() {
-			while(!shutdown.get()){
-				if(orderReq.getStatus().equals(OrderRequestWrapper.Status.Cancelled)){
-					orderReq.setRemainingQuantity(0);
-					handler.onOrderCancelled(Execution.Manager.dynami(), request);
-					return;
-				} else if((request.quantity > 0
-						&& price >= trad.book.ask().price
-						&& trad.book.ask().quantity >= orderReq.getRemainingQuantity())){
+		public Status getStatus() {
+			return status.get();
+		}
 
-					msg.async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, orderReq.getRemainingQuantity(), request.time));
-					orderReq.setStatus(OrderRequestWrapper.Status.Executed);
-					orderReq.setRemainingQuantity(0);
-					handler.onOrderExecuted(Execution.Manager.dynami(), request);
-//					executed = true;
-					break;
-				} else if((request.quantity > 0
-						&& price >= trad.book.ask().price
-						&& trad.book.ask().quantity < orderReq.getRemainingQuantity())){
+		private void setStatus(Status status){
+			this.status.set(status);
+		}
 
-					orderReq.setStatus(OrderRequestWrapper.Status.PartiallyExecuted);
-					orderReq.setRemainingQuantity(orderReq.getRemainingQuantity()-trad.book.bid(1).quantity);
-					msg.async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, trad.book.bid(1).quantity, request.time));
-					handler.onOrderPartiallyExecuted(Execution.Manager.dynami(), request);
-				} else if((request.quantity < 0
-						&& trad.book.bid().price >= price
-						&& trad.book.bid().quantity >= orderReq.getRemainingQuantity())){
+		public long getRemainingQuantity() {
+			return remainingQuantity.get();
+		}
 
-					msg.async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, -orderReq.getRemainingQuantity(), request.time));
-					orderReq.setStatus(OrderRequestWrapper.Status.Executed);
-					orderReq.setRemainingQuantity(0);
-					handler.onOrderExecuted(Execution.Manager.dynami(), request);
-//					executed = true;
-					break;
-				} else if((request.quantity < 0
-						&& trad.book.ask().price > price
-						&& trad.book.ask().quantity >= orderReq.getRemainingQuantity())){
-
-					msg.async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, -trad.book.ask(1).quantity, request.time));
-					orderReq.setStatus(OrderRequestWrapper.Status.PartiallyExecuted);
-					orderReq.setRemainingQuantity(orderReq.getRemainingQuantity()-trad.book.ask(1).quantity);
-					handler.onOrderPartiallyExecuted(Execution.Manager.dynami(), request);
-				}
-			}
-			if(request.conditions().size() > 0){
-				final Collection<IOrderCondition> conditions = request.conditions();
-				while(!shutdown.get()){
-					for(final IOrderCondition c: conditions){
-						if(c.check(request.quantity, trad.book.bid(), trad.book.ask())){
-							OrderService.this.send(new MarketOrder(request.symbol, -request.quantity, c.toString()));
-							return;
-						}
-					}
-					try { Thread.sleep(0, 1); } catch (InterruptedException e) {}
-				}
-			}
+		private void setRemainingQuantity(long quantity){
+			remainingQuantity.set(quantity);
 		}
 	}
 }

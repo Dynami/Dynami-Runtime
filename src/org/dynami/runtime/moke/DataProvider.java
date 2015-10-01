@@ -31,7 +31,7 @@ public class DataProvider implements IService, IDataProvider {
 
 	private static final String SYMBOL = "FTSEMIB";
 	private IData historical;
-	private long clockFrequence = 1000;
+	private long clockFrequence = 200;
 	private double bidAskSpread = 5.0;
 
 	private final AtomicBoolean isStarted = new AtomicBoolean(true);
@@ -48,8 +48,11 @@ public class DataProvider implements IService, IDataProvider {
 
 	@Override
 	public boolean init(Config config) throws Exception {
-		historical = restorePriceData(new File("C:/Users/user/Desktop/test/FTSEMIB_1M.txt"));
+		historical = restorePriceData(new File("C:/Users/user/Desktop/test/FTSEMIB_1M_TEST.txt"));
 		historical = historical.changeCompression(IData.COMPRESSION_UNIT.MINUTE*10);
+		
+		msg.forceSync(true);
+		
 		Asset.Future ftsemib = new Asset.Future(
 				SYMBOL,
 				"IT00002344",
@@ -71,7 +74,7 @@ public class DataProvider implements IService, IDataProvider {
 				while(isStarted.get()){
 					if(isRunning.get()){
 						Bar b = historical.get(idx.getAndIncrement());
-						System.out.println("DataProvider.init(...).new Runnable() {...}.run() "+b);
+						System.out.println("DataProvider.init(Bar) "+b);
 						HIGH = (random.nextBoolean())?1:2;
 						LOW = (HIGH == 1)?2:1;
 						double price = b.close;
@@ -83,7 +86,7 @@ public class DataProvider implements IService, IDataProvider {
 							} else if(i == LOW){
 								price = b.low;
 							} else if(i == CLOSE){
-								price = b.close;								
+								price = b.close;
 							}
 							
 							Book.Orders bid = new Book.Orders(b.symbol, b.time, Side.BID, 1, price-bidAskSpread/2, 100);
@@ -102,6 +105,8 @@ public class DataProvider implements IService, IDataProvider {
 							
 							try { Thread.sleep(clockFrequence/4); } catch (InterruptedException e) {}
 						}
+					} else {
+						try { Thread.sleep(clockFrequence); } catch (InterruptedException e) {}
 					}
 				}
 			}

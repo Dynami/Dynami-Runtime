@@ -89,7 +89,7 @@ public class Starter {
 					if (reader.ready()) {
 						parseCommand(reader.readLine());
 					}
-					Thread.sleep(1);
+					Thread.sleep(10);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();

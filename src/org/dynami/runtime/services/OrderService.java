@@ -95,6 +95,18 @@ public class OrderService extends Service implements IOrderService {
 			return false;
 		}
 	}
+	
+	public void removePendings(){
+		getPendingOrders().forEach(r->{
+			cancellOrder(r.id);
+		});
+		
+		pendingConditions.forEach(p->{
+			p.unsubscribeMe();
+		});
+		
+		pendingConditions.clear();
+	}
 
 	@Override
 	public List<OrderRequest> getPendingOrders() {
@@ -120,6 +132,7 @@ public class OrderService extends Service implements IOrderService {
 	private class PendingConditions {
 		private final OrderRequest request;
 		private final List<?> parent;
+		private boolean invalidate = false;
 		
 		public PendingConditions(OrderRequest request, List<?> parent){
 			this.request = request;
@@ -131,16 +144,21 @@ public class OrderService extends Service implements IOrderService {
 			}
 		}
 		
+		public void unsubscribeMe(){
+			invalidate = true;
+			Execution.Manager.msg().unsubscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
+			Execution.Manager.msg().unsubscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, askHandler);
+		}
+		
 		private final IMsg.Handler bidHandler = new IMsg.Handler(){
-			boolean invalidateMe = false;
 			public void update(boolean last, Object msg) {
-				if(!invalidateMe){
+				if(!invalidate){
 					request.conditions().forEach(cond->{
 						if(cond.check(request.quantity, (Book.Orders)msg, null)){
 							Execution.Manager.msg().unsubscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, this);
 							OrderService.this.send(new MarketOrder(request.symbol, -request.quantity, cond.toString()));
 							parent.remove(PendingConditions.this);
-							invalidateMe = true;
+							invalidate = true;
 							return;
 						}
 					});
@@ -150,15 +168,14 @@ public class OrderService extends Service implements IOrderService {
 		
 
 		private final IMsg.Handler askHandler = new IMsg.Handler(){
-			boolean invalidateMe = false;
 			public void update(boolean last, Object msg) {
-				if(!invalidateMe){
+				if(!invalidate){
 					request.conditions().forEach(cond->{
 						if(cond.check(request.quantity, null, (Book.Orders)msg)){
 							Execution.Manager.msg().unsubscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, this);
 							OrderService.this.send(new MarketOrder(request.symbol, -request.quantity, cond.toString()));
 							parent.remove(PendingConditions.this);
-							invalidateMe = true;
+							invalidate = true;
 							return;
 						}
 					});

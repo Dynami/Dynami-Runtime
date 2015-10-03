@@ -92,7 +92,6 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 	}
 
 	private void runOncePerStage(IStage stage) {
-//		tradingSystems.clear();
 		technicalIndicators.clear();
 		try {
 			extractUserUtilities(stage, technicalIndicators);

@@ -73,7 +73,7 @@ public class PortfolioService extends Service implements IPortfolioService {
 
 					realized.set(realized.get()+closed.roi());
 					openPositions.remove(p.symbol);
-					System.out.println("PortfolioService.realized( Close "+realized.get()+")");
+					System.out.printf("PortfolioService.realized( Close %5.2f)\n", realized.get());
 				} else if( abs(e.quantity + p.quantity) > abs(e.quantity)){
 					// incremento la posizione e medio il prezzo
 					double newPrice = (e.entryPrice*e.quantity+p.price*p.quantity)/(e.quantity+p.quantity);
@@ -89,13 +89,13 @@ public class PortfolioService extends Service implements IPortfolioService {
 
 					realized.set(realized.get()+closed.roi());
 					openPositions.put(newPos.symbol, newPos);
-					System.out.println("PortfolioService.realized( "+realized.get()+") "+newPos);
+					System.out.printf("PortfolioService.realized( Close %5.2f) "+newPos+"\n", realized.get());
 				}
 			}
 		});
 		return true;
 	}
-
+	
 	@Override
 	public void setInitialBudget(double budget) {
 		assert budget < 1000 : "The minumum amount for budget is 1000";

@@ -36,7 +36,7 @@ public interface IExecutionManager {
 	 * @return {@link IDynami}
 	 */
 	public IDynami dynami();
-
+	
 	/**
 	 * Set a custom IStrategyExecutor engine, instead of the default one {@link StrategyExecutor}.
 	 * If you want using a different one, invoke this method before invoking IExecutionManager::load();

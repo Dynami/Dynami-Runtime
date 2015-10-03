@@ -19,6 +19,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.dynami.core.portfolio.ClosedPosition;
 import org.dynami.core.portfolio.OpenPosition;
 import org.dynami.core.services.IPortfolioService;
 import org.dynami.runtime.IServiceBus.ServiceStatus;
@@ -70,7 +71,7 @@ public class Starter {
 				System.out.println(Commands.STOP+"\tto stop");
 				System.out.println(Commands.EXIT+"\tto shutdown Dynami");
 				System.out.println(Commands.PRINT_STATUS+"\tto print strategy status");
-
+				System.out.println(Commands.PRINT_DEEP_STATUS+"\tto print deep strategy status (with closed positions)");
 				listener.start();
 			} else {
 				System.out.println("Something wrong append on initializing Dynami");
@@ -145,6 +146,30 @@ public class Starter {
 				System.err.println(Commands.START_RESPONSE+cmd+"_"+Commands.RESPONSE_NOT_EXECUTED+Commands.END_RESPONSE);
 			}
 			break;
+		case Commands.PRINT_DEEP_STATUS:
+			try {
+				//boolean executed = !Execution.Manager.isRunning();
+				IPortfolioService portfolio = Execution.Manager.dynami().portfolio();
+				System.out.println("Open positions:");
+				for(OpenPosition p:portfolio.getOpenPosition()){
+					System.out.println(p);
+					System.out.println("-------------------------------------");
+				}
+				System.out.println();
+				
+				System.out.printf("Budget    : %6.2f\n", portfolio.getCurrentBudget());
+				System.out.printf("Realized  : %6.2f\n", portfolio.realized());
+				System.out.printf("Unrealized: %6.2f\n", portfolio.unrealized());
+				System.out.println();
+				for(ClosedPosition cp :portfolio.getClosedPosition()){
+					System.out.println(cp);
+					System.out.println("-------------------------------------");
+				}
+				//System.err.println(Commands.START_RESPONSE+cmd+"_"+((executed)?Commands.RESPONSE_EXECUTED:Commands.RESPONSE_NOT_EXECUTED)+Commands.END_RESPONSE);
+			} catch (Exception e) {
+				System.err.println(Commands.START_RESPONSE+cmd+"_"+Commands.RESPONSE_NOT_EXECUTED+Commands.END_RESPONSE);
+			}
+			break;
 		case Commands.STOP:
 			try {
 				boolean executed = Execution.Manager.stop();
@@ -175,6 +200,7 @@ public class Starter {
 		public static final String RUN = "R";
 		public static final String PAUSE = "P";
 		public static final String PRINT_STATUS = "X";
+		public static final String PRINT_DEEP_STATUS = "XX";
 		public static final String STOP = "S";
 		public static final String EXIT = "E";
 

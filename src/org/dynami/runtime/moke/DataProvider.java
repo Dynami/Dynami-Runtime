@@ -1,3 +1,18 @@
+/*
+ * Copyright 2015 Alessandro Atria - a.atria@gmail.com
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.dynami.runtime.moke;
 
 import java.io.BufferedReader;
@@ -31,8 +46,9 @@ public class DataProvider implements IService, IDataProvider {
 
 	private static final String SYMBOL = "FTSEMIB";
 	private IData historical;
-	private long clockFrequence = 200;
+	private long clockFrequence = 100;
 	private double bidAskSpread = 5.0;
+	private final long DAY_MILLIS = 1000*60*60*24;
 
 	private final AtomicBoolean isStarted = new AtomicBoolean(true);
 	private final AtomicBoolean isRunning = new AtomicBoolean(false);
@@ -49,7 +65,7 @@ public class DataProvider implements IService, IDataProvider {
 	@Override
 	public boolean init(Config config) throws Exception {
 		historical = restorePriceData(new File("C:/Users/user/Desktop/test/FTSEMIB_1M_TEST.txt"));
-		historical = historical.changeCompression(IData.COMPRESSION_UNIT.MINUTE*10);
+//		historical = historical.changeCompression(IData.COMPRESSION_UNIT.MINUTE*10);
 		
 		msg.forceSync(true);
 		
@@ -58,7 +74,7 @@ public class DataProvider implements IService, IDataProvider {
 				"IT00002344",
 				"FTSE-MIB",
 				5.0,
-				DUtils.d2l(.05),
+				.05,
 				1,
 				"IDEM",
 				dailyFormat.parse("31/12/2015").getTime(),
@@ -71,40 +87,55 @@ public class DataProvider implements IService, IDataProvider {
 			@Override
 			public void run() {
 				int OPEN = 0, HIGH = 1, LOW = 2 , CLOSE = 3;
+				Bar prevBar = null, currentBar, nextBar;
 				while(isStarted.get()){
 					if(isRunning.get()){
-						Bar b = historical.get(idx.getAndIncrement());
-						System.out.println("DataProvider.init(Bar) "+b);
+						currentBar = historical.get(idx.getAndIncrement());
+						if(historical.size() > idx.get()){
+							nextBar = historical.get(idx.get());							
+						} else {
+							nextBar = null;
+						}
+						System.out.println("DataProvider.init(Bar) "+currentBar);
 						HIGH = (random.nextBoolean())?1:2;
 						LOW = (HIGH == 1)?2:1;
-						double price = b.close;
+						double price = currentBar.close;
 						for(int i = 0 ; i < 4; i++){
 							if(i == OPEN){
-								price = b.open;
+								price = currentBar.open;
 							} else if(i == HIGH){
-								price = b.high;
+								price = currentBar.high;
 							} else if(i == LOW){
-								price = b.low;
+								price = currentBar.low;
 							} else if(i == CLOSE){
-								price = b.close;
+								price = currentBar.close;
 							}
 							
-							Book.Orders bid = new Book.Orders(b.symbol, b.time, Side.BID, 1, price-bidAskSpread/2, 100);
-							msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic+b.symbol, bid);
-							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(b.symbol, bid));
+							Book.Orders bid = new Book.Orders(currentBar.symbol, currentBar.time, Side.BID, 1, price-bidAskSpread/2, 100);
+							msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic+currentBar.symbol, bid);
+							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, bid));
 							
-							Book.Orders ask = new Book.Orders(b.symbol, b.time, Side.ASK, 1, price+bidAskSpread/2, 100);
-							msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic+b.symbol, ask);
-							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(b.symbol, ask));
+							Book.Orders ask = new Book.Orders(currentBar.symbol, currentBar.time, Side.ASK, 1, price+bidAskSpread/2, 100);
+							msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic+currentBar.symbol, ask);
+							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, ask));
 							
 							if(i == OPEN){
-								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(b.symbol, Event.Type.OnBarOpen, b));
+								if(prevBar != null && currentBar.time/DAY_MILLIS > prevBar.time/DAY_MILLIS){
+									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarOpen, Event.Type.OnDayOpen));
+								} else {
+									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarOpen));									
+								}
 							} else if(i == CLOSE){
-								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(b.symbol, Event.Type.OnBarClose, b));
+								if(nextBar == null || currentBar.time/DAY_MILLIS < nextBar.time/DAY_MILLIS){
+									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarClose, Event.Type.OnDayClose));
+								} else {
+									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarClose));
+								}
 							}
 							
 							try { Thread.sleep(clockFrequence/4); } catch (InterruptedException e) {}
 						}
+						prevBar = currentBar;
 					} else {
 						try { Thread.sleep(clockFrequence); } catch (InterruptedException e) {}
 					}

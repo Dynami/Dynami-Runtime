@@ -43,7 +43,7 @@ public class DataService extends Service implements IDataService  {
 	public boolean init(Config config) throws Exception {
 		msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, _msg)->{
 			Event e = (Event)_msg;
-			if(Event.Type.OnBarClose.equals(e.type)){
+			if(e.is(Event.Type.OnBarClose)){
 				data.putIfAbsent(e.bar.symbol, new BarData());
 				data.get(e.bar.symbol).append(e.bar);
 			}

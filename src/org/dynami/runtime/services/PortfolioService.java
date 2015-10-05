@@ -111,10 +111,20 @@ public class PortfolioService extends Service implements IPortfolioService {
 	public boolean isOnMarket() {
 		return openPositions.size() > 0;
 	}
+	
+	@Override
+	public boolean isFlat() {
+		return !isOnMarket();
+	}
 
 	@Override
 	public boolean isOnMarket(String symbol) {
 		return openPositions.get(symbol) != null;
+	}
+	
+	@Override
+	public boolean isFlat(String symbol) {
+		return !isOnMarket(symbol);
 	}
 
 	@Override

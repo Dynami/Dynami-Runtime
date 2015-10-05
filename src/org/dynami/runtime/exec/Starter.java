@@ -163,7 +163,6 @@ public class Starter {
 				System.out.println();
 				for(ClosedPosition cp :portfolio.getClosedPosition()){
 					System.out.println(cp);
-					System.out.println("-------------------------------------");
 				}
 				//System.err.println(Commands.START_RESPONSE+cmd+"_"+((executed)?Commands.RESPONSE_EXECUTED:Commands.RESPONSE_NOT_EXECUTED)+Commands.END_RESPONSE);
 			} catch (Exception e) {

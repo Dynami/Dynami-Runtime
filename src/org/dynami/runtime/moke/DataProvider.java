@@ -46,7 +46,7 @@ public class DataProvider implements IService, IDataProvider {
 
 	private static final String SYMBOL = "FTSEMIB";
 	private IData historical;
-	private long clockFrequence = 100;
+	private long clockFrequence = 0;
 	private double bidAskSpread = 5.0;
 	private final long DAY_MILLIS = 1000*60*60*24;
 
@@ -65,7 +65,7 @@ public class DataProvider implements IService, IDataProvider {
 	@Override
 	public boolean init(Config config) throws Exception {
 		historical = restorePriceData(new File("C:/Users/user/Desktop/test/FTSEMIB_1M_TEST.txt"));
-//		historical = historical.changeCompression(IData.COMPRESSION_UNIT.MINUTE*10);
+		historical = historical.changeCompression(IData.COMPRESSION_UNIT.MINUTE);
 		
 		msg.forceSync(true);
 		
@@ -96,7 +96,7 @@ public class DataProvider implements IService, IDataProvider {
 						} else {
 							nextBar = null;
 						}
-						System.out.println("DataProvider.init(Bar) "+currentBar);
+//						System.out.println("DataProvider.init(Bar) "+currentBar);
 						HIGH = (random.nextBoolean())?1:2;
 						LOW = (HIGH == 1)?2:1;
 						double price = currentBar.close;

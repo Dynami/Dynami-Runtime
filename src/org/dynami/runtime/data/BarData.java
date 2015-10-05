@@ -197,6 +197,8 @@ public class BarData implements IData {
 			if(!composer.empty)out.append(composer.close());
 			return out;
 		
+		} else if(newCompression == currentCompression){
+			return this;
 		} else {
 			return null;
 		}

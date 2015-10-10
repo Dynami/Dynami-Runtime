@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.dynami.runtime.moke;
+package org.dynami.runtime.data.local;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -31,13 +31,14 @@ import org.dynami.core.bus.IMsg;
 import org.dynami.core.config.Config;
 import org.dynami.core.data.Bar;
 import org.dynami.core.data.IData;
-import org.dynami.core.utils.DUtils;
+import org.dynami.core.utils.DTime;
+import org.dynami.runtime.IDataHandler;
 import org.dynami.runtime.IService;
 import org.dynami.runtime.data.BarData;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 
-public class DataProvider implements IService, IDataProvider {
+public class DataProvider implements IService, IDataHandler {
 
 	private static final SimpleDateFormat intradaySecondsFormat = new SimpleDateFormat(TRACK_RECORD.INTRADAY_SECONDS_DATE_FORMAT);
 	private static final SimpleDateFormat intradayMinutesFormat = new SimpleDateFormat(TRACK_RECORD.INTRADAY_MINUTES_DATE_FORMAT);
@@ -64,8 +65,8 @@ public class DataProvider implements IService, IDataProvider {
 
 	@Override
 	public boolean init(Config config) throws Exception {
-		historical = restorePriceData(new File("C:/Users/user/Desktop/test/FTSEMIB_1M_TEST.txt"));
-		historical = historical.changeCompression(IData.COMPRESSION_UNIT.MINUTE);
+		historical = restorePriceData(new File("./resources/FTSEMIB_1M_2015_10_02.txt"));
+		historical = historical.changeCompression(IData.COMPRESSION_UNIT.DAY);
 		
 		msg.forceSync(true);
 		
@@ -75,10 +76,10 @@ public class DataProvider implements IService, IDataProvider {
 				"FTSE-MIB",
 				5.0,
 				.05,
-				1,
+				1L,
 				"IDEM",
 				dailyFormat.parse("31/12/2015").getTime(),
-				DUtils.d2l(1.),
+				1L,
 				"^FTSEMIB");
 
 		msg.async(Topics.INSTRUMENT.topic, ftsemib);
@@ -121,11 +122,16 @@ public class DataProvider implements IService, IDataProvider {
 							
 							if(i == OPEN){
 								if(prevBar != null && currentBar.time/DAY_MILLIS > prevBar.time/DAY_MILLIS){
+									//FIXME prevBar for new daily bar is wrong
+									DTime.Clock.update(currentBar.time);
 									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarOpen, Event.Type.OnDayOpen));
 								} else {
+									//FIXME prevBar for new daily bar is wrong
+									DTime.Clock.update(currentBar.time);
 									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarOpen));									
 								}
 							} else if(i == CLOSE){
+								DTime.Clock.update(currentBar.time);
 								if(nextBar == null || currentBar.time/DAY_MILLIS < nextBar.time/DAY_MILLIS){
 									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarClose, Event.Type.OnDayClose));
 								} else {

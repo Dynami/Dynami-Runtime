@@ -18,6 +18,7 @@ package org.dynami.runtime.services;
 import org.dynami.core.bus.IMsg;
 import org.dynami.core.services.ITraceService;
 import org.dynami.core.services.ITraceService.Trace.Type;
+import org.dynami.core.utils.DTime;
 import org.dynami.core.utils.DUtils;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.impl.Service;
@@ -29,32 +30,32 @@ public class TraceService extends Service implements ITraceService {
 
 	@Override
 	public void info(String stage, String line) {
-		msg.async(Topics.TRACE.topic, new ITraceService.Trace(Type.Info, System.currentTimeMillis(), stage, line));
+		msg.async(Topics.TRACE.topic, new ITraceService.Trace(Type.Info, DTime.Clock.getTime(), stage, line));
 	}
 
 	@Override
 	public void debug(String stage, String line) {
-		msg.async(Topics.TRACE.topic, new ITraceService.Trace(Type.Debug, System.currentTimeMillis(), stage, line));
+		msg.async(Topics.TRACE.topic, new ITraceService.Trace(Type.Debug, DTime.Clock.getTime(), stage, line));
 	}
 
 	@Override
 	public void warn(String stage, String line) {
-		msg.async(Topics.TRACE.topic, new ITraceService.Trace(Type.Warn, System.currentTimeMillis(), stage, line));
+		msg.async(Topics.TRACE.topic, new ITraceService.Trace(Type.Warn, DTime.Clock.getTime(), stage, line));
 	}
 
 	@Override
 	public void error(String stage, String line) {
-		msg.async(Topics.TRACE.topic, new ITraceService.Trace(Type.Error, System.currentTimeMillis(), stage, line));
+		msg.async(Topics.TRACE.topic, new ITraceService.Trace(Type.Error, DTime.Clock.getTime(), stage, line));
 	}
 
 	@Override
 	public void error(String stage, Throwable e) {
-		msg.async(Topics.TRACE.topic, new ITraceService.Trace(Type.Error, System.currentTimeMillis(), stage, DUtils.getErrorMessage(e)));
+		msg.async(Topics.TRACE.topic, new ITraceService.Trace(Type.Error, DTime.Clock.getTime(), stage, DUtils.getErrorMessage(e)));
 	}
 
 	@Override
 	public void market(String line) {
-		msg.async(Topics.TRACE.topic, new ITraceService.Trace(Type.Info, System.currentTimeMillis(), "Market", line));
+		msg.async(Topics.TRACE.topic, new ITraceService.Trace(Type.Info, DTime.Clock.getTime(), "Market", line));
 	}
 
 	@Override

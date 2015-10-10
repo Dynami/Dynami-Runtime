@@ -24,6 +24,7 @@ import org.dynami.core.bus.IMsg;
 import org.dynami.core.config.Config;
 import org.dynami.core.data.IData;
 import org.dynami.core.services.IDataService;
+import org.dynami.core.utils.DTime;
 import org.dynami.runtime.data.BarData;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.impl.Service;
@@ -69,7 +70,7 @@ public class DataService extends Service implements IDataService  {
 	public IData history(String symbol, Date from, Date to) {
 		IData tmp = history(symbol);
 		assert tmp != null : "No, historical data for symbol "+symbol;
-		return tmp.getPeriod(from.getTime(), (to != null)?to.getTime():System.currentTimeMillis());
+		return tmp.getPeriod(from.getTime(), (to != null)?to.getTime():DTime.Clock.getTime());
 	}
 
 	@Override
@@ -77,7 +78,7 @@ public class DataService extends Service implements IDataService  {
 		IData tmp = history(symbol);
 		assert tmp != null : "No, historical data for symbol "+symbol;
 		return tmp
-				.getPeriod(from.getTime(), (to != null)?to.getTime():System.currentTimeMillis())
+				.getPeriod(from.getTime(), (to != null)?to.getTime():DTime.Clock.getTime())
 				.changeCompression(timeFrame*units);
 	}
 }

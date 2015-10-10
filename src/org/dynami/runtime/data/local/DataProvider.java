@@ -124,11 +124,11 @@ public class DataProvider implements IService, IDataHandler {
 							
 							if(i == OPEN){
 								if(prevBar != null && currentBar.time/DAY_MILLIS > prevBar.time/DAY_MILLIS){
-									//FIXME prevBar for new daily bar is wrong
+									//FIXME currentBar.time for new daily bar is wrong
 									DTime.Clock.update(currentBar.time);
 									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarOpen, Event.Type.OnDayOpen));
 								} else {
-									//FIXME prevBar for new daily bar is wrong
+									//FIXME currentBar.time for new daily bar is wrong
 									DTime.Clock.update(currentBar.time);
 									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarOpen));									
 								}

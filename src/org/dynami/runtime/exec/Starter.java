@@ -48,8 +48,10 @@ public class Starter {
 	public static void main(String[] args) {
 		try {
 			new Starter().execute(new String[]{
-					"-file", "C:/Users/user/Desktop/test/strategy/org.sample.strategy.dynami",
-					"-strategy_lib", "C:/Users/user/Desktop/test/strategy/dynami.sample.strategy_v1.jar"});
+					// set proper path, but let empty file for the moment
+					"-file", "../Dynami-Sample-Strategy/resources/myPersonalSettings.dynami",
+					// set proper path
+					"-strategy_lib", "../Dynami-Sample-Strategy/resources/dynami.sample.strategy_v1.jar"}); 
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -65,13 +67,13 @@ public class Starter {
 		if(Execution.Manager.select(arguments.instanceFilePath, arguments.strategyLibPath)){
 			if(Execution.Manager.init(null)){
 				System.out.println("Use the following commands to handle strategy execution:");
-				System.out.println(Commands.LOAD+"\tto load");
-				System.out.println(Commands.RUN+"\tto run/resume");
-				System.out.println(Commands.PAUSE+"\tto pause");
-				System.out.println(Commands.STOP+"\tto stop");
-				System.out.println(Commands.EXIT+"\tto shutdown Dynami");
-				System.out.println(Commands.PRINT_STATUS+"\tto print strategy status");
-				System.out.println(Commands.PRINT_DEEP_STATUS+"\tto print deep strategy status (with closed positions)");
+				System.out.println(Commands.LOAD+"+Enter\t\tto load");
+				System.out.println(Commands.RUN+"+Enter\t\tto run/resume");
+				System.out.println(Commands.PAUSE+"+Enter\t\tto pause");
+				System.out.println(Commands.STOP+"+Enter\t\tto stop");
+				System.out.println(Commands.EXIT+"+Enter\t\tto shutdown Dynami");
+				System.out.println(Commands.PRINT_STATUS+"+Enter\t\tto print strategy status");
+				System.out.println(Commands.PRINT_DEEP_STATUS+"+Enter\tto print deep strategy status (with closed positions)");
 				listener.start();
 			} else {
 				System.out.println("Something wrong append on initializing Dynami");

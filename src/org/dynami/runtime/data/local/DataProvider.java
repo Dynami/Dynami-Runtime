@@ -44,19 +44,17 @@ public class DataProvider implements IService, IDataHandler {
 	private static final SimpleDateFormat intradayMinutesFormat = new SimpleDateFormat(TRACK_RECORD.INTRADAY_MINUTES_DATE_FORMAT);
 	private static final SimpleDateFormat dailyFormat = new SimpleDateFormat(TRACK_RECORD.DAILY_DATE_FORMAT);
 	private static final SimpleDateFormat dailyShortFormat = new SimpleDateFormat(TRACK_RECORD.DAILY_SHORT_DATE_FORMAT);
-
-	private static final String SYMBOL = "FTSEMIB";
-	private IData historical;
-	private long clockFrequence = 0;
-	private double bidAskSpread = 5.0;
 	private final long DAY_MILLIS = 1000*60*60*24;
-
 	private final AtomicBoolean isStarted = new AtomicBoolean(true);
 	private final AtomicBoolean isRunning = new AtomicBoolean(false);
-	
 	private final Random random = new Random(1L);
+	private final IMsg msg = Execution.Manager.msg();
+	private IData historical;
+	
 
-	private IMsg msg = Execution.Manager.msg();
+	private static final String SYMBOL = "FTSEMIB";
+	private long clockFrequence = 0;
+	private double bidAskSpread = 5.0;
 
 	@Override
 	public String id() {
@@ -91,6 +89,10 @@ public class DataProvider implements IService, IDataHandler {
 				Bar prevBar = null, currentBar, nextBar;
 				while(isStarted.get()){
 					if(isRunning.get()){
+						if(idx.get() >= historical.size()){
+							System.out.println("No more data!!! Give X or XX command to print final status");
+							break;
+						}
 						currentBar = historical.get(idx.getAndIncrement());
 						if(historical.size() > idx.get()){
 							nextBar = historical.get(idx.get());							

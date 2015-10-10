@@ -48,7 +48,6 @@ public class AssetService extends Service implements IAssetService  {
 		 */
 		msg.subscribe(Topics.INSTRUMENT.topic, (last, _msg)->{
 			final Asset instr = (Asset)_msg;
-			System.out.println("InstrService.init("+instr+")");
 			registry.put(instr.symbol, instr);
 			if(instr instanceof Asset.Tradable){
 				msg.subscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+instr.symbol, ((Asset.Tradable)instr).book.askBookOrdersHandler);

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.dynami.runtime.data.local;
+package org.dynami.runtime.handlers;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -38,7 +38,7 @@ import org.dynami.runtime.data.BarData;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 
-public class DataProvider implements IService, IDataHandler {
+public class TextFileDataHandler implements IService, IDataHandler {
 
 	private static final SimpleDateFormat intradaySecondsFormat = new SimpleDateFormat(TRACK_RECORD.INTRADAY_SECONDS_DATE_FORMAT);
 	private static final SimpleDateFormat intradayMinutesFormat = new SimpleDateFormat(TRACK_RECORD.INTRADAY_MINUTES_DATE_FORMAT);

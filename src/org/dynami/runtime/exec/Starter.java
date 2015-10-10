@@ -23,7 +23,7 @@ import org.dynami.core.portfolio.ClosedPosition;
 import org.dynami.core.portfolio.OpenPosition;
 import org.dynami.core.services.IPortfolioService;
 import org.dynami.runtime.IServiceBus.ServiceStatus;
-import org.dynami.runtime.data.local.DataProvider;
+import org.dynami.runtime.handlers.TextFileDataHandler;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 
@@ -62,7 +62,7 @@ public class Starter {
 		new JCommander(arguments, args);
 
 		Execution.Manager.getServiceBus().registerDefaultServices();
-		Execution.Manager.getServiceBus().registerService(new DataProvider(), 100);
+		Execution.Manager.getServiceBus().registerService(new TextFileDataHandler(), 100);
 
 		if(Execution.Manager.select(arguments.instanceFilePath, arguments.strategyLibPath)){
 			if(Execution.Manager.init(null)){

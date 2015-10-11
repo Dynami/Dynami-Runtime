@@ -60,7 +60,7 @@ public class Starter {
 	public void execute(String args[]) throws Exception {
 		Args arguments = new Args();
 		new JCommander(arguments, args);
-
+		
 		Execution.Manager.getServiceBus().registerDefaultServices();
 		Execution.Manager.getServiceBus().registerService(new TextFileDataHandler(), 100);
 

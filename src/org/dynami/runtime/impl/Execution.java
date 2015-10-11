@@ -40,7 +40,7 @@ public enum Execution implements IExecutionManager {
 	private String strategyJarPath;
 	private IDynami dynami = (IDynami)engine;
 
-
+	
 	private final StateMachine stateMachine = new StateMachine(()->{
 		State.NonActive.addChildren(State.Selected, State.Initialized);
 		State.Selected.addChildren(State.Initialized);
@@ -77,6 +77,7 @@ public enum Execution implements IExecutionManager {
 
 	@Override
 	public boolean init(Config config) {
+		
 		if(stateMachine.canChangeState(State.Initialized)){
 			if(serviceBus.initServices(config)){
 				return stateMachine.changeState(State.Initialized);
@@ -89,7 +90,9 @@ public enum Execution implements IExecutionManager {
 	public boolean select(String strategyInstanceFilePath, String strategyJarPath) {
 		try {
 			if(stateMachine.canChangeState(State.Selected)){
-				strategyInstance = JSON.Parser.deserialize(new File(strategyInstanceFilePath));
+				if(strategyInstanceFilePath != null && !strategyInstanceFilePath.equals("")){
+					strategyInstance = JSON.Parser.deserialize(new File(strategyInstanceFilePath));
+				}
 				this.strategyJarPath = strategyJarPath;
 				return stateMachine.changeState(State.Selected);
 			} else {
@@ -106,13 +109,10 @@ public enum Execution implements IExecutionManager {
 		if(stateMachine.canChangeState(State.Loaded)){
 			try {
 				try(StrategyClassLoader loader = new StrategyClassLoader(strategyJarPath, getClass().getClassLoader())){
-//					final AddonDescriptor<IStrategy> addon = loader.getAddonDescriptor();
-//					final IStrategy strategy = addon.getClazz().newInstance();
 					final IStrategy strategy = loader.getStrategyClass().newInstance();
 
 					engine.setup(serviceBus);
 					engine.load(strategy);
-
 				}
 				return stateMachine.changeState(State.Loaded);
 			} catch (Exception e) {

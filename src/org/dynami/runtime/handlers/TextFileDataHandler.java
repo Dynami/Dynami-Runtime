@@ -63,7 +63,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 	@Override
 	public boolean init(Config config) throws Exception {
-		historical = restorePriceData(new File("./resources/FTSEMIB_1M_2015_10_02.txt"));
+		historical = restorePriceData(new File("D:/git/Dynami-Runtime/resources/FTSEMIB_1M_2015_10_02.txt"));
 		historical = historical.changeCompression(IData.COMPRESSION_UNIT.DAY);
 		
 		msg.forceSync(true);

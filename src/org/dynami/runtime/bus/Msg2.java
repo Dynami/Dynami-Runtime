@@ -163,6 +163,7 @@ public enum Msg2 implements IMsg {
 	@Override
 	public boolean dispose() {
 		shutdown.set(true);
+		
 		return true;
 	}
 }

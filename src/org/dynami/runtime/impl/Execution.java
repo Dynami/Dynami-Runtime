@@ -156,6 +156,11 @@ public enum Execution implements IExecutionManager {
 			return false;
 		}
 	}
+	
+	@Override
+	public void dispose() {
+		serviceBus.disposeServices();
+	}
 
 	@Override
 	public boolean isLoaded() {

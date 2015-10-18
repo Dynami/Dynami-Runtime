@@ -131,6 +131,8 @@ public interface IExecutionManager {
 
 
 	public boolean canMoveTo(State state);
+	
+	public void dispose();
 
 	/**
 	 * Retrieves the service bus, which handles Dynami's services life cycle.

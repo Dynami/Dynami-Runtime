@@ -50,7 +50,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private final Random random = new Random(1L);
 	private final IMsg msg = Execution.Manager.msg();
 	private IData historical;
-	
+	private Thread thread;
 
 	private static final String SYMBOL = "FTSEMIB";
 	private long clockFrequence = 100;
@@ -83,7 +83,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 				"^FTSEMIB");
 
 		msg.async(Topics.INSTRUMENT.topic, ftsemib);
-		new Thread(new Runnable() {
+		thread = new Thread(new Runnable() {
 			private final AtomicInteger idx = new AtomicInteger(0);
 			@Override
 			public void run() {
@@ -148,8 +148,8 @@ public class TextFileDataHandler implements IService, IDataHandler {
 					}
 				}
 			}
-		}).start();
-
+		}, "TextFileDataHandler");
+		thread.start();
 		return true;
 	}
 
@@ -173,8 +173,10 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 	@Override
 	public boolean dispose() {
-		isRunning.set(false);
+		System.out.println("TextFileDataHandler.dispose()");
 		isStarted.set(false);
+		isRunning.set(false);
+		thread.interrupt();
 		return true;
 	}
 

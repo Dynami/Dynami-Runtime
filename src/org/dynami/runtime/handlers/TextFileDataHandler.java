@@ -53,8 +53,9 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	
 
 	private static final String SYMBOL = "FTSEMIB";
-	private long clockFrequence = 0;
+	private long clockFrequence = 100;
 	private double bidAskSpread = 5.0;
+	private final long COMPRESSION_RATE = IData.COMPRESSION_UNIT.DAY;
 
 	@Override
 	public String id() {
@@ -63,8 +64,9 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 	@Override
 	public boolean init(Config config) throws Exception {
+		
 		historical = restorePriceData(new File("D:/git/Dynami-Runtime/resources/FTSEMIB_1M_2015_10_02.txt"));
-		historical = historical.changeCompression(IData.COMPRESSION_UNIT.DAY);
+		historical = historical.changeCompression(COMPRESSION_RATE);
 		
 		msg.forceSync(true);
 		
@@ -123,13 +125,10 @@ public class TextFileDataHandler implements IService, IDataHandler {
 							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, ask));
 							
 							if(i == OPEN){
+								DTime.Clock.update(currentBar.time-COMPRESSION_RATE);
 								if(prevBar != null && currentBar.time/DAY_MILLIS > prevBar.time/DAY_MILLIS){
-									//FIXME currentBar.time for new daily bar is wrong
-									DTime.Clock.update(currentBar.time);
 									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarOpen, Event.Type.OnDayOpen));
 								} else {
-									//FIXME currentBar.time for new daily bar is wrong
-									DTime.Clock.update(currentBar.time);
 									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarOpen));									
 								}
 							} else if(i == CLOSE){

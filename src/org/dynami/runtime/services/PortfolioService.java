@@ -145,8 +145,8 @@ public class PortfolioService extends Service implements IPortfolioService {
 	}
 
 	@Override
-	public Collection<OpenPosition> getOpenPosition() {
-		return Collections.unmodifiableCollection(openPositions.values());
+	public List<OpenPosition> getOpenPosition() {
+		return Collections.unmodifiableList(new ArrayList<OpenPosition>(openPositions.values()));
 	}
 
 	@Override
@@ -155,16 +155,16 @@ public class PortfolioService extends Service implements IPortfolioService {
 	}
 
 	@Override
-	public Collection<ClosedPosition> getClosedPosition() {
-		return Collections.unmodifiableCollection(closedPositions);
+	public List<ClosedPosition> getClosedPosition() {
+		return Collections.unmodifiableList(closedPositions);
 	}
 
 	@Override
-	public Collection<ClosedPosition> getClosedPosition(String symbol) {
+	public List<ClosedPosition> getClosedPosition(String symbol) {
 		List<ClosedPosition> pos = closedPositions.stream()
 			.filter( p -> p.symbol.equals(symbol))
 			.collect(Collectors.toList());
-		return Collections.unmodifiableCollection(pos);
+		return Collections.unmodifiableList(pos);
 	}
 
 	@Override

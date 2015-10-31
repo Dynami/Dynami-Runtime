@@ -101,6 +101,11 @@ public class PortfolioService extends Service implements IPortfolioService {
 		assert budget < 1000 : "The minumum amount for budget is 1000";
 		this.budget = budget;
 	}
+	
+	@Override
+	public double getInitialBudget() {
+		return budget;
+	}
 
 	@Override
 	public double getCurrentBudget() {

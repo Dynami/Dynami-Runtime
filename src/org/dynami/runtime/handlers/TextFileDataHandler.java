@@ -38,8 +38,8 @@ import org.dynami.runtime.data.BarData;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 
+@Config.Settings(name="TextFileDataHandler settings", description="bla bla bla")
 public class TextFileDataHandler implements IService, IDataHandler {
-
 	private static final SimpleDateFormat intradaySecondsFormat = new SimpleDateFormat(TRACK_RECORD.INTRADAY_SECONDS_DATE_FORMAT);
 	private static final SimpleDateFormat intradayMinutesFormat = new SimpleDateFormat(TRACK_RECORD.INTRADAY_MINUTES_DATE_FORMAT);
 	private static final SimpleDateFormat dailyFormat = new SimpleDateFormat(TRACK_RECORD.DAILY_DATE_FORMAT);
@@ -51,27 +51,37 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private final IMsg msg = Execution.Manager.msg();
 	private IData historical;
 	private Thread thread;
+	
+	@Config.Param(name="Symbol", description="Main symbol")
+	private String symbol = "FTSEMIB";
+	
+	@Config.Param(name="Clock frequence", description="Execution speed. Set to zero for no latency.")
+	private Long clockFrequence = 0L;
 
-	private static final String SYMBOL = "FTSEMIB";
-	private long clockFrequence = 100;
-	private double bidAskSpread = 5.0;
-	private final long COMPRESSION_RATE = IData.COMPRESSION_UNIT.DAY;
+	@Config.Param(name="Bid/Ask spread", description="Bid/Ask spread expressed in points")
+	private Double bidAskSpread = 5.0;
+	
+	@Config.Param(name="Data file", description="Text file containing instrument historical data")
+	private File dataFile = new File("./resources/FTSEMIB_1M_2015_10_02.txt");
+
+	//	@Config.Param(name="Timeframe compression")
+	private long COMPRESSION_RATE = IData.COMPRESSION_UNIT.DAY;
 
 	@Override
 	public String id() {
 		return ID;
 	}
-
+	
 	@Override
 	public boolean init(Config config) throws Exception {
 		
-		historical = restorePriceData(new File("D:/git/Dynami-Runtime/resources/FTSEMIB_1M_2015_10_02.txt"));
+		historical = restorePriceData(dataFile);
 		historical = historical.changeCompression(COMPRESSION_RATE);
 		
 		msg.forceSync(true);
 		
 		Asset.Future ftsemib = new Asset.Future(
-				SYMBOL,
+				symbol,
 				"IT00002344",
 				"FTSE-MIB",
 				5.0,
@@ -185,7 +195,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		return null;
 	}
 
-	private static BarData restorePriceData(final File f) throws Exception {
+	private BarData restorePriceData(final File f) throws Exception {
 		SimpleDateFormat dateParser = null;
 		BufferedReader reader = null;
 		try {
@@ -210,7 +220,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 				double low = Double.parseDouble(tmp[TRACK_RECORD.LOW].replace(',', '.'));
 				double close = Double.parseDouble(tmp[TRACK_RECORD.CLOSE].replace(',', '.'));
 				long volume = Long.parseLong(tmp[TRACK_RECORD.VOLUME]);
-				barData.append(new Bar(SYMBOL, open, high, low, close, volume, 0, time));
+				barData.append(new Bar(symbol, open, high, low, close, volume, 0, time));
 			}
 			return barData;
 
@@ -253,5 +263,36 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		public static final String INTRADAY_MINUTES_DATE_FORMAT = "dd/MM/yyyy HH:mm";
 		public static final String DAILY_DATE_FORMAT = "dd/MM/yyyy";
 		public static final String DAILY_SHORT_DATE_FORMAT = "yyyyMMdd";
+	}
+	
+	public String getSymbol() {
+		return symbol;
+	}
+
+	public void setSymbol(String symbol) {
+		this.symbol = symbol;
+	}
+
+	public Long getClockFrequence() {
+		return clockFrequence;
+	}
+
+	public void setClockFrequence(Long clockFrequence) {
+		this.clockFrequence = clockFrequence;
+	}
+
+	public Double getBidAskSpread() {
+		return bidAskSpread;
+	}
+
+	public void setBidAskSpread(Double bidAskSpread) {
+		this.bidAskSpread = bidAskSpread;
+	}
+	public File getDataFile() {
+		return dataFile;
+	}
+
+	public void setDataFile(File dataFile) {
+		this.dataFile = dataFile;
 	}
 }

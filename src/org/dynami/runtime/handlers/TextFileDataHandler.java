@@ -55,8 +55,8 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	@Config.Param(name="Symbol", description="Main symbol")
 	private String symbol = "FTSEMIB";
 	
-	@Config.Param(name="Clock frequence", description="Execution speed. Set to zero for no latency.")
-	private Long clockFrequence = 0L;
+	@Config.Param(name="Clock frequency", description="Execution speed. Set to zero for no latency.")
+	private Long clockFrequency = 0L;
 
 	@Config.Param(name="Bid/Ask spread", description="Bid/Ask spread expressed in points")
 	private Double bidAskSpread = 5.0;
@@ -150,11 +150,11 @@ public class TextFileDataHandler implements IService, IDataHandler {
 								}
 							}
 							
-							try { Thread.sleep(clockFrequence/4); } catch (InterruptedException e) {}
+							try { Thread.sleep(clockFrequency/4); } catch (InterruptedException e) {}
 						}
 						prevBar = currentBar;
 					} else {
-						try { Thread.sleep(clockFrequence); } catch (InterruptedException e) {}
+						try { Thread.sleep(clockFrequency); } catch (InterruptedException e) {}
 					}
 				}
 			}
@@ -274,11 +274,11 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	}
 
 	public Long getClockFrequence() {
-		return clockFrequence;
+		return clockFrequency;
 	}
 
 	public void setClockFrequence(Long clockFrequence) {
-		this.clockFrequence = clockFrequence;
+		this.clockFrequency = clockFrequence;
 	}
 
 	public Double getBidAskSpread() {

@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.text.SimpleDateFormat;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -37,6 +38,7 @@ import org.dynami.runtime.IService;
 import org.dynami.runtime.data.BarData;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
+import org.dynami.runtime.utils.BSEurOptionsUtils;
 
 @Config.Settings(name="TextFileDataHandler settings", description="bla bla bla")
 public class TextFileDataHandler implements IService, IDataHandler {
@@ -64,8 +66,14 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	@Config.Param(name="Data file", description="Text file containing instrument historical data")
 	private File dataFile = new File("./resources/FTSEMIB_1M_2015_10_02.txt");
 
-	//	@Config.Param(name="Timeframe compression")
-	private long COMPRESSION_RATE = IData.COMPRESSION_UNIT.DAY;
+	@Config.Param(name="Time compression", description="Compression used for time frame", type=Config.Type.TFCompression)
+	private Long compressionRate = IData.COMPRESSION_UNIT.DAY;
+	
+	@Config.Param(name="Option Strike Step", description="Number of points between one option strike and another")
+	private Double optionStep = 500.;
+	
+	@Config.Param(name="Number of strikes", description="Number of strikes above and below first price")
+	private Integer optionStrikes = 30;
 
 	@Override
 	public String id() {
@@ -76,7 +84,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	public boolean init(Config config) throws Exception {
 		
 		historical = restorePriceData(dataFile);
-		historical = historical.changeCompression(COMPRESSION_RATE);
+		historical = historical.changeCompression(compressionRate);
 		
 		msg.forceSync(true);
 		
@@ -90,9 +98,29 @@ public class TextFileDataHandler implements IService, IDataHandler {
 				"IDEM",
 				dailyFormat.parse("31/12/2015").getTime(),
 				1L,
-				"^FTSEMIB");
+				"^FTSEMIB",
+				()->1.); // risk free rate
 
 		msg.async(Topics.INSTRUMENT.topic, ftsemib);
+		
+		Asset.Option opt = new Asset.Option(
+				"MIBOC22500F", 
+				"IT0585944", 
+				"MIBO CALL 22.500 exp", 
+				2.5, 
+				.05, 
+				.125, 
+				"IDEM", 
+				dailyFormat.parse("31/12/2015").getTime(), 
+				1, "FTSEMIB", 
+				()->1., // fake risk free rate provider
+				22_500, 
+				Asset.Option.Type.CALL, 
+				BSEurOptionsUtils.greeksEngine, 
+				BSEurOptionsUtils.implVola);
+		
+//		msg.async(Topics.INSTRUMENT.topic, opt);
+		
 		thread = new Thread(new Runnable() {
 			private final AtomicInteger idx = new AtomicInteger(0);
 			@Override
@@ -135,7 +163,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, ask));
 							
 							if(i == OPEN){
-								DTime.Clock.update(currentBar.time-COMPRESSION_RATE);
+								DTime.Clock.update(currentBar.time-compressionRate);
 								if(prevBar != null && currentBar.time/DAY_MILLIS > prevBar.time/DAY_MILLIS){
 									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarOpen, Event.Type.OnDayOpen));
 								} else {
@@ -150,7 +178,9 @@ public class TextFileDataHandler implements IService, IDataHandler {
 								}
 							}
 							
-							try { Thread.sleep(clockFrequency/4); } catch (InterruptedException e) {}
+							try {
+								TimeUnit.MILLISECONDS.sleep(clockFrequency/4);
+							} catch (InterruptedException e) {}
 						}
 						prevBar = currentBar;
 					} else {
@@ -273,11 +303,11 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		this.symbol = symbol;
 	}
 
-	public Long getClockFrequence() {
+	public Long getClockFrequency() {
 		return clockFrequency;
 	}
 
-	public void setClockFrequence(Long clockFrequence) {
+	public void setClockFrequency(Long clockFrequence) {
 		this.clockFrequency = clockFrequence;
 	}
 
@@ -295,4 +325,29 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	public void setDataFile(File dataFile) {
 		this.dataFile = dataFile;
 	}
+
+	public Long getCompressionRate() {
+		return compressionRate;
+	}
+
+	public void setCompressionRate(Long compressionRate) {
+		this.compressionRate = compressionRate;
+	}
+
+	public Double getOptionStep() {
+		return optionStep;
+	}
+
+	public void setOptionStep(Double optionStep) {
+		this.optionStep = optionStep;
+	}
+
+	public Integer getOptionStrikes() {
+		return optionStrikes;
+	}
+
+	public void setOptionStrikes(Integer optionStrikes) {
+		this.optionStrikes = optionStrikes;
+	}
+	
 }

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -53,7 +54,10 @@ public enum Msg2 implements IMsg {
 					});
 				});
 				// sleep execution for a nanosecond, otherwise sometimes raises unexpected NullPointerException
-				try { Thread.sleep(0, 1); } catch (InterruptedException e) {}
+				try {
+					TimeUnit.NANOSECONDS.sleep(1);
+//					Thread.sleep(0, 1); 
+				} catch (InterruptedException e) {}
 			}
 		}
 	}, "Msg2.engine");

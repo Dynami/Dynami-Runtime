@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Collectors;
 
 import org.dynami.core.assets.Asset;
+import org.dynami.core.assets.OptionChain;
 import org.dynami.core.bus.IMsg;
 import org.dynami.core.config.Config;
 import org.dynami.core.services.IAssetService;
@@ -31,6 +32,7 @@ import org.dynami.runtime.topics.Topics;
 
 public class AssetService extends Service implements IAssetService  {
 	private final Map<String, Asset> registry = new ConcurrentSkipListMap<>();
+	private final Map<String, OptionChain> chains = new ConcurrentSkipListMap<>();
 
 	private final IMsg msg = Execution.Manager.msg();
 
@@ -77,6 +79,24 @@ public class AssetService extends Service implements IAssetService  {
 					.filter((asset)-> ((Asset.DerivativeInstr)asset).parentSymbol.equals(symbol))
 					.collect(Collectors.toList())
 				);
+	}
+	
+	@Override
+	public OptionChain getOptionChainFor(String symbol) {
+		OptionChain chain = chains.get(symbol);
+		if(chain == null){
+			Asset.Option[] options = registry.values()
+					.stream()
+					.filter((asset)->asset instanceof Asset.Option)
+					.filter((asset)-> ((Asset.DerivativeInstr)asset).parentSymbol.equals(symbol))
+					.map(i->(Asset.Option)i)
+					.sorted((o1, o2)->Double.compare(o1.strike, o2.strike))
+					.toArray(Asset.Option[]::new);
+			
+			chain = new OptionChain(symbol, options);
+			chains.put(symbol, chain);
+		}
+		return chain;
 	}
 
 	@Override

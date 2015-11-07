@@ -64,7 +64,7 @@ public class PortfolioService extends Service implements IPortfolioService {
 			OpenPosition e = openPositions.get(p.symbol);
 			if(e == null){
 				Asset.Tradable trad = (Asset.Tradable)Execution.Manager.dynami().assets().getBySymbol(p.symbol);
-				openPositions.put(p.symbol, new OpenPosition(p.symbol, p.quantity, p.price, p.time, trad.pointValue, p.time));
+				openPositions.put(p.symbol, new OpenPosition(trad.family, p.symbol, p.quantity, p.price, p.time, trad.pointValue, p.time));
 			} else {
 				// chiudo la posizione
 				if(e.quantity + p.quantity == 0){
@@ -77,14 +77,14 @@ public class PortfolioService extends Service implements IPortfolioService {
 				} else if( abs(e.quantity + p.quantity) > abs(e.quantity)){
 					// incremento la posizione e medio il prezzo
 					double newPrice = (e.entryPrice*e.quantity+p.price*p.quantity)/(e.quantity+p.quantity);
-					OpenPosition newPos = new OpenPosition(e.symbol, e.quantity+p.quantity, newPrice, p.time, e.pointValue, p.time);
+					OpenPosition newPos = new OpenPosition(e.family, e.symbol, e.quantity+p.quantity, newPrice, p.time, e.pointValue, p.time);
 					openPositions.put(newPos.symbol, newPos);
 					System.out.println("PortfolioService.init() Increment "+newPos);
 				} else if( Math.abs(e.quantity + p.quantity) < Math.abs(e.quantity)){
 					// decremento la posizione
-					OpenPosition newPos = new OpenPosition(e.symbol, e.quantity+p.quantity, e.entryPrice, p.time, e.pointValue, p.time);
+					OpenPosition newPos = new OpenPosition(e.family, e.symbol, e.quantity+p.quantity, e.entryPrice, p.time, e.pointValue, p.time);
 					
-					ClosedPosition closed = new ClosedPosition(e.symbol, -p.quantity, e.entryPrice, e.entryTime, p.price, p.time, e.pointValue);
+					ClosedPosition closed = new ClosedPosition(e.family, e.symbol, -p.quantity, e.entryPrice, e.entryTime, p.price, p.time, e.pointValue);
 					closedPositions.add(closed);
 
 					realized.set(realized.get()+closed.roi());
@@ -170,6 +170,20 @@ public class PortfolioService extends Service implements IPortfolioService {
 	@Override
 	public double realized() {
 		return realized.get();
+	}
+	
+	@Override
+	public double unrealized(String symbol){
+		final IAssetService assetService = Execution.Manager.getServiceBus().getService(IAssetService.class, IAssetService.ID);
+		final Asset.Tradable trad = (Asset.Tradable)assetService.getBySymbol(symbol);
+		final OpenPosition o = openPositions.get(symbol);
+		if(o == null) {
+			return 0.0;
+		} else {
+			double currentPrice = (o.quantity > 0)?trad.book.bid().price:trad.book.ask().price;
+			double value = ((currentPrice - o.entryPrice)*o.quantity*o.pointValue);
+			return value;
+		}
 	}
 
 	@Override

@@ -10,9 +10,11 @@ Bundle-ClassPath: .,
  libs/jcommander.jar
 Require-Bundle: org.dynami.core;bundle-version="1.0.0",
  org.dynami.ta;bundle-version="1.0.0"
-Export-Package: org.dynami.runtime,
+Export-Package: org.dynami.core.json,
+ org.dynami.runtime,
  org.dynami.runtime.bus,
  org.dynami.runtime.data,
+ org.dynami.runtime.data.vola,
  org.dynami.runtime.exec,
  org.dynami.runtime.handlers,
  org.dynami.runtime.impl,

@@ -39,6 +39,7 @@ import org.dynami.runtime.data.BarData;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 import org.dynami.runtime.utils.BSEurOptionsUtils;
+import org.dynami.runtime.utils.LastPriceEngine;
 
 @Config.Settings(name="TextFileDataHandler settings", description="bla bla bla")
 public class TextFileDataHandler implements IService, IDataHandler {
@@ -57,23 +58,24 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	@Config.Param(name="Symbol", description="Main symbol")
 	private String symbol = "FTSEMIB";
 	
-	@Config.Param(name="Clock frequency", description="Execution speed. Set to zero for no latency.")
+	@Config.Param(name="Clock frequency", description="Execution speed. Set to zero for no latency.", step=1)
 	private Long clockFrequency = 0L;
 
-	@Config.Param(name="Bid/Ask spread", description="Bid/Ask spread expressed in points")
+	@Config.Param(name="Bid/Ask spread", description="Bid/Ask spread expressed in points", step=0.01)
 	private Double bidAskSpread = 5.0;
 	
 	@Config.Param(name="Data file", description="Text file containing instrument historical data")
 	private File dataFile = new File("./resources/FTSEMIB_1M_2015_10_02.txt");
 
-	@Config.Param(name="Time compression", description="Compression used for time frame", type=Config.Type.TFCompression)
+	@Config.Param(name="Time compression", description="Compression used for time frame")
 	private Long compressionRate = IData.COMPRESSION_UNIT.DAY;
 	
-	@Config.Param(name="Option Strike Step", description="Number of points between one option strike and another")
+	@Config.Param(name="Option Strike Step", description="Number of points between one option strike and another", step=.1)
 	private Double optionStep = 500.;
 	
-	@Config.Param(name="Number of strikes", description="Number of strikes above and below first price")
+	@Config.Param(name="Number of strikes", description="Number of strikes above and below first price", max=50, step=1)
 	private Integer optionStrikes = 30;
+	
 
 	@Override
 	public String id() {
@@ -94,7 +96,8 @@ public class TextFileDataHandler implements IService, IDataHandler {
 				"FTSE-MIB",
 				5.0,
 				.05,
-				1L,
+				1.,
+				LastPriceEngine.MidPrice ,
 				"IDEM",
 				dailyFormat.parse("31/12/2015").getTime(),
 				1L,
@@ -110,12 +113,15 @@ public class TextFileDataHandler implements IService, IDataHandler {
 				2.5, 
 				.05, 
 				.125, 
+				LastPriceEngine.MidPrice ,
 				"IDEM", 
 				dailyFormat.parse("31/12/2015").getTime(), 
-				1, "FTSEMIB", 
+				1L, 
+				"FTSEMIB", 
 				()->1., // fake risk free rate provider
 				22_500, 
 				Asset.Option.Type.CALL, 
+				Asset.Option.Exercise.European,
 				BSEurOptionsUtils.greeksEngine, 
 				BSEurOptionsUtils.implVola);
 		
@@ -179,12 +185,12 @@ public class TextFileDataHandler implements IService, IDataHandler {
 							}
 							
 							try {
-								TimeUnit.MILLISECONDS.sleep(clockFrequency/4);
+								TimeUnit.MILLISECONDS.sleep(clockFrequency.longValue()/4);
 							} catch (InterruptedException e) {}
 						}
 						prevBar = currentBar;
 					} else {
-						try { Thread.sleep(clockFrequency); } catch (InterruptedException e) {}
+						try { Thread.sleep(clockFrequency.longValue()); } catch (InterruptedException e) {}
 					}
 				}
 			}
@@ -349,5 +355,4 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	public void setOptionStrikes(Integer optionStrikes) {
 		this.optionStrikes = optionStrikes;
 	}
-	
 }

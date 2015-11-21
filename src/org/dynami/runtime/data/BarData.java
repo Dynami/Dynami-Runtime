@@ -154,6 +154,15 @@ public class BarData implements IData {
 				.filter(b-> b.time == time)
 				.findFirst().get();
 	}
+	
+	@Override
+	public IData getLastBars(int number) {
+		if(number >= data.size()){
+			return new BarData(data.subList(data.size()-1-number, data.size()-1), getCompression());
+		} else {
+			return null;
+		}
+	}
 
 	@Override
 	public IData getPeriod(long begin, long end) {

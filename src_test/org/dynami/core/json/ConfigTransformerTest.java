@@ -1,35 +1,31 @@
 package org.dynami.core.json;
 
 import org.dynami.core.config.Config;
-import org.dynami.runtime.json.ConfigTransformer;
-
-import flexjson.JSONDeserializer;
-import flexjson.JSONSerializer;
 
 public class ConfigTransformerTest {
 	
 	public static void main(String[] args) {
 		try {
-			final JSONSerializer serializer = new JSONSerializer();
-			serializer.transform(new ConfigTransformer(), TestConfig.class);
-			
-			TestConfig conf = new TestConfig();
-			conf.autoClose=true;
-			conf.deltaThreshold=.34;
-			conf.fastPeriod = 24;
-			conf.longPeriod = 2345L;
-			conf.name = "Sample config";
-			conf.ignore = "Ignore this";
-			
-			String out = serializer.deepSerialize(conf);
-			System.out.println(out);
-			
-			final JSONDeserializer<TestConfig> deserializer = new JSONDeserializer<>();
-			
-			deserializer.use(TestConfig.class, new ConfigTransformer());
-			TestConfig conf2 = new TestConfig();
-			conf2 = deserializer.deserialize(out, TestConfig.class);
-			System.out.println(conf2.toString());
+//			final JSONSerializer serializer = new JSONSerializer();
+//			serializer.transform(new ConfigTransformer(), TestConfig.class);
+//			
+//			TestConfig conf = new TestConfig();
+//			conf.autoClose=true;
+//			conf.deltaThreshold=.34;
+//			conf.fastPeriod = 24;
+//			conf.longPeriod = 2345L;
+//			conf.name = "Sample config";
+//			conf.ignore = "Ignore this";
+//			
+//			String out = serializer.deepSerialize(conf);
+//			System.out.println(out);
+//			
+//			final JSONDeserializer<TestConfig> deserializer = new JSONDeserializer<>();
+//			
+//			deserializer.use(TestConfig.class, new ConfigTransformer());
+//			TestConfig conf2 = new TestConfig();
+//			conf2 = deserializer.deserialize(out, TestConfig.class);
+//			System.out.println(conf2.toString());
 			
 		} catch (Exception e) {
 			e.printStackTrace();

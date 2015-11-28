@@ -17,7 +17,6 @@ package org.dynami.runtime.utils;
 
 import org.dynami.core.assets.Asset;
 import org.dynami.core.assets.Asset.Option.Type;
-import org.dynami.core.assets.Book.Orders;
 import org.dynami.core.assets.Greeks;
 import org.dynami.core.utils.DUtils;
 import org.dynami.runtime.impl.Execution;
@@ -48,14 +47,7 @@ public class BSEurOptionsUtils {
 		@Override
 		public double estimate(String underlyingSymbol, long time, Type type, long expire, double strike, double optionPrice, double riskFreeRate) {
 			final Asset.Tradable asset = (Asset.Tradable)Execution.Manager.dynami().assets().getBySymbol(underlyingSymbol);
-			
-			final Orders underlyingBid = asset.book.bid();
-			final Orders underlyingAsk = asset.book.ask();
-			
-			final double underBidPrice = (underlyingBid.price > 0)?underlyingBid.price:underlyingAsk.price;
-			final double underAskPrice = (underlyingAsk.price > 0)?underlyingAsk.price:underlyingBid.price; 
-			final double underPrice = (underAskPrice+underBidPrice)/2;
-			
+			final double underPrice = asset.lastPrice();
 			final double days = (expire-time)/(double)DUtils.DAY_MILLIS;
 			
 			return impliedVolatility(type, optionPrice, strike, days, riskFreeRate, underPrice);
@@ -64,13 +56,16 @@ public class BSEurOptionsUtils {
 	
 	public static Greeks.Engine greeksEngine = new Greeks.Engine() {
 
-		public void evaluate(Greeks output, long time, Type type, long expire, double strike, double price, double vola, double interestRate) {
+		public void evaluate(Greeks output, String underlyingSymbol, long time, Type type, long expire, double strike, double price, double vola, double interestRate) {
+			final Asset.Tradable asset = Execution.Manager.dynami().assets().getBySymbol(underlyingSymbol).asTradable();
+			final double underPrice = asset.lastPrice();
+			
 			final double maturity = ((expire-time)/DUtils.DAY_MILLIS)/365.;
-			final double delta = EuropeanBlackScholes.delta(type, price, strike, vola, maturity, interestRate);
-			final double gamma = EuropeanBlackScholes.gamma(type, price, strike, vola, maturity, interestRate);
-			final double theta = EuropeanBlackScholes.theta(type, price, strike, vola, maturity, interestRate);
-			final double vega = EuropeanBlackScholes.vega(type, price, strike, vola, maturity, interestRate);
-			final double rho = EuropeanBlackScholes.rho(type, price, strike, vola, maturity, interestRate);
+			final double delta = EuropeanBlackScholes.delta(type, underPrice, strike, vola, maturity, interestRate);
+			final double gamma = EuropeanBlackScholes.gamma(type, underPrice, strike, vola, maturity, interestRate);
+			final double theta = EuropeanBlackScholes.theta(type, underPrice, strike, vola, maturity, interestRate);
+			final double vega = EuropeanBlackScholes.vega(type, underPrice, strike, vola, maturity, interestRate);
+			final double rho = EuropeanBlackScholes.rho(type, underPrice, strike, vola, maturity, interestRate);
 			
 			output.setGreeks(delta, gamma, vega, theta, rho);
 		}

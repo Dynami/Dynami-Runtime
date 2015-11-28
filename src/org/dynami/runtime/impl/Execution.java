@@ -15,8 +15,6 @@
  */
 package org.dynami.runtime.impl;
 
-import java.io.File;
-
 import org.dynami.core.IDynami;
 import org.dynami.core.IStrategy;
 import org.dynami.core.bus.IMsg;
@@ -27,8 +25,6 @@ import org.dynami.runtime.IExecutionManager;
 import org.dynami.runtime.IServiceBus;
 import org.dynami.runtime.IStrategyExecutor;
 import org.dynami.runtime.bus.Msg2;
-import org.dynami.runtime.json.JSON;
-import org.dynami.runtime.models.StrategyInstance;
 import org.dynami.runtime.topics.Topics;
 
 public enum Execution implements IExecutionManager {
@@ -36,7 +32,7 @@ public enum Execution implements IExecutionManager {
 
 	private final IServiceBus serviceBus = new ServiceBus();
 	private IStrategyExecutor engine = new StrategyExecutor();
-	private StrategyInstance strategyInstance;
+	//private StrategyInstance strategyInstance;
 	private String strategyJarPath;
 	private IDynami dynami = (IDynami)engine;
 
@@ -91,7 +87,7 @@ public enum Execution implements IExecutionManager {
 		try {
 			if(stateMachine.canChangeState(State.Selected)){
 				if(strategyInstanceFilePath != null && !strategyInstanceFilePath.equals("")){
-					strategyInstance = JSON.Parser.deserialize(new File(strategyInstanceFilePath));
+					//strategyInstance = JSON.Parser.deserialize(new File(strategyInstanceFilePath));
 				}
 				this.strategyJarPath = strategyJarPath;
 				return stateMachine.changeState(State.Selected);

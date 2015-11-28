@@ -26,8 +26,9 @@ public class CloseToCloseVolatilityEngine implements IVolatilityEngine {
 	public double compute(IData data, int period) {
 		Series close = data.close();
 		final int size = close.size();
-		if(size >= period){
-			return StatUtils.relativeStd(close.subset(size-period, size-1))*Math.sqrt(252)*100;
+		final int _period = Math.max(period, 10);
+		if(size > 0 && size > period){
+			return StatUtils.relativeStd(close.subset(size-_period, size-1));
 		} else {
 			return 0;
 		}

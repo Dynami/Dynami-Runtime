@@ -19,9 +19,12 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +36,7 @@ import org.dynami.core.assets.Asset;
 import org.dynami.core.assets.Asset.Option;
 import org.dynami.core.assets.Book;
 import org.dynami.core.assets.Book.Side;
+import org.dynami.core.assets.Market;
 import org.dynami.core.bus.IMsg;
 import org.dynami.core.config.Config;
 import org.dynami.core.data.Bar;
@@ -75,7 +79,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private String symbol = "FTSEMIB";
 	
 	@Config.Param(name="Clock frequency", description="Execution speed. Set to zero for no latency.", step=1)
-	private Long clockFrequency = 0L;
+	private Long clockFrequency = 200L;
 
 	@Config.Param(name="Future Bid/Ask spread", description="Bid/Ask spread expressed in points", step=0.01)
 	private Double bidAskSpread = 5.0;
@@ -85,7 +89,6 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 	@Config.Param(name="Time compression", description="Compression used for time frame")
 	private Long compressionRate = IData.COMPRESSION_UNIT.DAY;
-	
 	
 	@Config.Param(name="Future Point Value", description="Future point value", step=.1)
 	private Double futurePointValue = 5.;
@@ -101,7 +104,6 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	
 	@Config.Param(name="% Margin required", description="Margination required in percentage points", step=.1)
 	private Double marginRequired = .125;
-	
 
 	@Override
 	public String id() {
@@ -116,6 +118,8 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		
 		msg.forceSync(true);
 		
+		Market market = new Market("IDEM", "IDEM", Locale.ITALY, LocalTime.of(9, 0, 0), LocalTime.of(17, 25, 0));
+		
 		Asset.Future ftsemib = new Asset.Future(
 				symbol,
 				"IT00002344",
@@ -124,7 +128,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 				.05,
 				marginRequired,
 				LastPriceEngine.MidPrice ,
-				"IDEM",
+				market,
 				dailyFormat.parse("31/12/2015").getTime(),
 				1L,
 				"^FTSEMIB",
@@ -141,7 +145,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		
 		long[] expirations = computeExpirationInPeriod(firstBar.time, lastBar.time);
 		
-		for(int i= 1; i < optionStrikes/2; i++){
+		for(int i = 1; i < optionStrikes/2; i++){
 			for(int j = 0; j < expirations.length; j++){
 				double upperStrike = firstStrike+(optionStep*i); 
 				double lowerStrike = firstStrike-(optionStep*i);
@@ -151,6 +155,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 					String lowerOptionSymbol = DUtils.getOptionSymbol(symbol, type, expirations[j], lowerStrike);
 					
 					Option opt0 = createOption(
+							market,
 							"MIBO", 
 							symbol,
 							DUtils.getOptionName(symbol, type, expirations[j], upperStrike), 
@@ -164,6 +169,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 					options.add(opt0);
 					
 					Option opt1 = createOption(
+							market,
 							"MIBO", 
 							symbol,
 							DUtils.getOptionName(symbol, type, expirations[j], lowerStrike), 
@@ -215,7 +221,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 								price = currentBar.close;
 							}
 							
-							optionsPricing(msg, computedHistorical, volaEngine, options, optionStep, currentBar.time, price, bidAskSpread);
+							optionsPricing(msg, market, compressionRate, computedHistorical, volaEngine, options, optionStep, currentBar.time, price, bidAskSpread);
 							
 							Book.Orders bid = new Book.Orders(currentBar.symbol, currentBar.time, Side.BID, 1, price-bidAskSpread/2, 100);
 							msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic+currentBar.symbol, bid);
@@ -289,22 +295,38 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	}
 	
 	
-	private static void optionsPricing(final IMsg msg, final BarData data, final IVolatilityEngine volaEngine, final List<Option> options, final double optionStep, final long time, final double spot, final double bidAskSpread){
+	private static void optionsPricing(final IMsg msg, final Market market, final long compresssionRate, final BarData data, final IVolatilityEngine volaEngine, final List<Option> options, final double optionStep, final long time, final double spot, final double bidAskSpread){
 		for(Option o:options){
 			if(o.isExpired(time)){
 				options.remove(o);
+				continue;
 			}
 			int daysLeft = o.daysToExpiration(time);
 			int strikesFromAtm = (int)(Math.abs(spot-o.strike)/optionStep);
-			double vola = data.getVolatility(volaEngine, daysLeft);
+			
+			double factor = DUtils.YEAR_WORKDAYS;
+			if(compresssionRate >= IData.COMPRESSION_UNIT.DAY){
+				factor = (IData.COMPRESSION_UNIT.DAY/compresssionRate)*DUtils.YEAR_WORKDAYS;
+			} else {
+				final Duration duration = Duration.between(market.getOpenTime(), market.getCloseTime());
+				final long milliSeconds = duration.getSeconds()*1_000L;
+				factor = DUtils.YEAR_WORKDAYS*(milliSeconds/compresssionRate);
+			}
+			
+			double vola = data.getVolatility(volaEngine, daysLeft)*Math.sqrt(factor);
 			if(vola > 0){
-				double optBidPrice = EuropeanBlackScholes.price(o.type, spot-((bidAskSpread/2)*strikesFromAtm), o.strike, vola, daysLeft/365., 1.);
-				double optAskPrice = EuropeanBlackScholes.price(o.type, spot+((bidAskSpread/2)*strikesFromAtm), o.strike, vola, daysLeft/365., 1.);
+				//p = c – S + Xe – r(T-t)
+				
+//				double optBidPrice = AnalyticFormulas.blackScholesOptionValue(spot-((bidAskSpread/2)*strikesFromAtm), 0., vola, (double)daysLeft/DUtils.YEAR_DAYS, o.strike);
+//				double optAskPrice = AnalyticFormulas.blackScholesOptionValue(spot+((bidAskSpread/2)*strikesFromAtm), 0., vola, (double)daysLeft/DUtils.YEAR_DAYS, o.strike);
+				
+				double optBidPrice = EuropeanBlackScholes.price(o.type, spot-((bidAskSpread/2)*strikesFromAtm), o.strike, vola, (double)daysLeft/DUtils.YEAR_DAYS, 1.);
+				double optAskPrice = EuropeanBlackScholes.price(o.type, spot+((bidAskSpread/2)*strikesFromAtm), o.strike, vola, (double)daysLeft/DUtils.YEAR_DAYS, 1.);
 				Book.Orders bid = new Book.Orders(o.symbol, time, Side.BID, 1, optBidPrice, 100);
-				msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic+o.strike, bid);
+				msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic+o.symbol, bid);
 				msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(o.symbol, bid));
 				
-				Book.Orders ask = new Book.Orders(o.symbol, time, Side.BID, 1, optAskPrice, 100);
+				Book.Orders ask = new Book.Orders(o.symbol, time, Side.ASK, 1, optAskPrice, 100);
 				msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic+o.symbol, ask);
 				msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(o.symbol, ask));
 			}
@@ -469,6 +491,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	}
 
 	public static Asset.Option createOption(
+			Market market,
 			String prefix, String parent, String name, 
 			String isin, 
 			Option.Type type,
@@ -485,11 +508,11 @@ public class TextFileDataHandler implements IService, IDataHandler {
 				.05, 
 				margin, 
 				LastPriceEngine.MidPrice,
-				"IDEM", 
+				market, 
 				expire, 
 				1L, 
 				parent, 
-				()->1., // fake risk free rate provider
+				()->0., // fake risk free rate provider
 				strike, 
 				type, 
 				Asset.Option.Exercise.European,

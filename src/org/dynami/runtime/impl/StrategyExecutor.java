@@ -72,8 +72,11 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 			runOncePerStage(stage);
 			previousStage = stage;
 		}
-
-		stage.process(this, event);
+		try {
+			stage.process(this, event);	
+		} catch (Exception e) {
+			Execution.Manager.msg().async(Topics.STRATEGY_ERRORS.topic, e);
+		}
 
 		if(endStrategy.get()){
 			try {

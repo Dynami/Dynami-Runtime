@@ -52,6 +52,7 @@ import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 import org.dynami.runtime.utils.BSEurOptionsUtils;
 import org.dynami.runtime.utils.EuropeanBlackScholes;
+import org.dynami.runtime.utils.JQuantLibUtils;
 import org.dynami.runtime.utils.LastPriceEngine;
 
 @Config.Settings(name="TextFileDataHandler settings", description="bla bla bla")
@@ -88,7 +89,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private File dataFile = new File("./resources/FTSEMIB_1M_2015_10_02.txt");
 
 	@Config.Param(name="Time compression", description="Compression used for time frame")
-	private Long compressionRate = IData.COMPRESSION_UNIT.DAY;
+	private Long compressionRate = IData.COMPRESSION_UNIT.MINUTE*30;
 	
 	@Config.Param(name="Future Point Value", description="Future point value", step=.1)
 	private Double futurePointValue = 5.;
@@ -145,7 +146,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		
 		long[] expirations = computeExpirationInPeriod(firstBar.time, lastBar.time);
 		
-		for(int i = 1; i < optionStrikes/2; i++){
+		for(int i = 0; i <= optionStrikes/2; i++){
 			for(int j = 0; j < expirations.length; j++){
 				double upperStrike = firstStrike+(optionStep*i); 
 				double lowerStrike = firstStrike-(optionStep*i);
@@ -301,7 +302,8 @@ public class TextFileDataHandler implements IService, IDataHandler {
 				options.remove(o);
 				continue;
 			}
-			int daysLeft = o.daysToExpiration(time);
+//			int daysLeft = o.daysToExpiration(time);
+			int daysLeft = 20;
 			int strikesFromAtm = (int)(Math.abs(spot-o.strike)/optionStep);
 			
 			double factor = DUtils.YEAR_WORKDAYS;
@@ -315,13 +317,15 @@ public class TextFileDataHandler implements IService, IDataHandler {
 			
 			double vola = data.getVolatility(volaEngine, daysLeft)*Math.sqrt(factor);
 			if(vola > 0){
+//				System.out.println("TextFileDataHandler.optionsPricing("+o.name+") "+vola);
 				//p = c – S + Xe – r(T-t)
-				
+//				o.setVolatility(vola);
 //				double optBidPrice = AnalyticFormulas.blackScholesOptionValue(spot-((bidAskSpread/2)*strikesFromAtm), 0., vola, (double)daysLeft/DUtils.YEAR_DAYS, o.strike);
 //				double optAskPrice = AnalyticFormulas.blackScholesOptionValue(spot+((bidAskSpread/2)*strikesFromAtm), 0., vola, (double)daysLeft/DUtils.YEAR_DAYS, o.strike);
 				
 				double optBidPrice = EuropeanBlackScholes.price(o.type, spot-((bidAskSpread/2)*strikesFromAtm), o.strike, vola, (double)daysLeft/DUtils.YEAR_DAYS, 1.);
 				double optAskPrice = EuropeanBlackScholes.price(o.type, spot+((bidAskSpread/2)*strikesFromAtm), o.strike, vola, (double)daysLeft/DUtils.YEAR_DAYS, 1.);
+				
 				Book.Orders bid = new Book.Orders(o.symbol, time, Side.BID, 1, optBidPrice, 100);
 				msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic+o.symbol, bid);
 				msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(o.symbol, bid));
@@ -516,7 +520,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 				strike, 
 				type, 
 				Asset.Option.Exercise.European,
-				BSEurOptionsUtils.greeksEngine, 
+				new JQuantLibUtils.GreeksEngine(), 
 				BSEurOptionsUtils.implVola);
 	}
 	

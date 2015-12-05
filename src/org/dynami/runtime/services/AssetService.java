@@ -17,15 +17,18 @@ package org.dynami.runtime.services;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Collectors;
 
+import org.dynami.core.Event;
 import org.dynami.core.assets.Asset;
 import org.dynami.core.assets.OptionChain;
 import org.dynami.core.bus.IMsg;
 import org.dynami.core.config.Config;
 import org.dynami.core.services.IAssetService;
+import org.dynami.core.utils.DTime;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.impl.Service;
 import org.dynami.runtime.topics.Topics;
@@ -43,7 +46,21 @@ public class AssetService extends Service implements IAssetService  {
 
 	@Override
 	public boolean init(Config config) throws Exception {
+		msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, msg)->{
+			Event e =(Event)msg;
+			if(e.is(Event.Type.OnDayClose)){
+				final long currentTime = DTime.Clock.getTime()+1;
+				final List<Asset> to_remove = registry.values()
+					.stream()
+					.filter(a->a instanceof Asset.ExpiringInstr)
+					.filter(a->((Asset.ExpiringInstr)a).isExpired(currentTime))
+					.collect(Collectors.toList());
+				
+				to_remove.forEach(a->registry.remove(a.symbol));
 
+				chains.values().forEach(OptionChain::cleanExpired);
+			}
+		});
 
 		/**
 		 * When new instruments are put into Instruments Registry a link between data and orders book is created
@@ -56,7 +73,6 @@ public class AssetService extends Service implements IAssetService  {
 				msg.subscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+instr.symbol, ((Asset.Tradable)instr).book.bidBookOrdersHandler);
 			}
 		});
-
 		return true;
 	}
 

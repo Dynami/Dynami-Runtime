@@ -1,9 +1,34 @@
 package org.dynami.runtime.utils;
 
 import org.dynami.core.assets.Asset;
+import org.dynami.core.assets.Asset.Option;
+import org.dynami.core.assets.Asset.Tradable;
+import org.dynami.core.data.IPricingEngine;
+import org.dynami.core.utils.DUtils;
+
 import static java.lang.Math.PI;
 
 public class EuropeanBlackScholes {
+	
+	public static final IPricingEngine OptionPricingEngine = new IPricingEngine() {
+		@Override
+		public double compute(Tradable tradable, long time, double price, double vola, double freeInterestRate) {
+			if(tradable instanceof Asset.Option){
+//				System.out.println("EuropeanBlackScholes.enclosing_method() "+vola);
+				Option opt = (Asset.Option)tradable; 
+				double maturity = ((opt.expire-time)/(double)DUtils.DAY_MILLIS)/DUtils.YEAR_DAYS;
+				if(maturity < 0 ){
+					return 0.;
+				}
+				return price(opt.type, price, opt.strike, vola, maturity, freeInterestRate);
+			} else {
+				return price;
+			}
+		}
+	};
+	
+	
+	
 	private static MathNormalCDF mathNormalCDF= new MathNormalCDF();
 	
 	public static double price(Asset.Option.Type type, double stock, double strike, double volatility, double maturity, double interest){

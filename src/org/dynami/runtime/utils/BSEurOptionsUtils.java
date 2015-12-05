@@ -24,24 +24,6 @@ import org.dynami.runtime.impl.Execution;
 public class BSEurOptionsUtils {
 	private static final double ACCURACY = 0.0001;
 	
-//	public static class ImplVola implements Greeks.ImpliedVolatility {
-//		@Override
-//		public double estimate(String underlyingSymbol, long time, Type type, long expire, double strike, double optionPrice, double riskFreeRate) {
-//			final Asset.Tradable asset = (Asset.Tradable)Execution.Manager.dynami().assets().getBySymbol(underlyingSymbol);
-//			
-//			final Orders underlyingBid = asset.book.bid();
-//			final Orders underlyingAsk = asset.book.ask();
-//			
-//			final double underBidPrice = (underlyingBid.price > 0)?underlyingBid.price:underlyingAsk.price;
-//			final double underAskPrice = (underlyingAsk.price > 0)?underlyingAsk.price:underlyingBid.price; 
-//			final double underPrice = (underAskPrice+underBidPrice)/2;
-//			
-//			final double days = (expire-time)/(double)DUtils.DAY_MILLIS;
-//			
-//			return impliedVolatility(type, optionPrice, strike, days, riskFreeRate, underPrice);
-//		}
-//	}
-	
 	public static Greeks.ImpliedVolatility implVola = new Greeks.ImpliedVolatility() {
 		
 		@Override
@@ -50,13 +32,13 @@ public class BSEurOptionsUtils {
 			final double underPrice = asset.lastPrice();
 			final double days = (expire-time)/(double)DUtils.DAY_MILLIS;
 			
-			return impliedVolatility(type, optionPrice, strike, days, riskFreeRate, underPrice);
+			return impliedVolatility(type, underPrice, strike, days, riskFreeRate, optionPrice);
 		}
 	};
 	
 	public static Greeks.Engine greeksEngine = new Greeks.Engine() {
 
-		public void evaluate(Greeks output, String underlyingSymbol, long time, Type type, long expire, double strike, double price, double vola, double interestRate) {
+		public void evaluate(Greeks output, String underlyingSymbol, long time, Type type, long expire, double strike, double vola, double interestRate) {
 			final Asset.Tradable asset = Execution.Manager.dynami().assets().getBySymbol(underlyingSymbol).asTradable();
 			final double underPrice = asset.lastPrice();
 			
@@ -67,34 +49,20 @@ public class BSEurOptionsUtils {
 			final double vega = EuropeanBlackScholes.vega(type, underPrice, strike, vola, maturity, interestRate);
 			final double rho = EuropeanBlackScholes.rho(type, underPrice, strike, vola, maturity, interestRate);
 			
-			output.setGreeks(delta, gamma, vega, theta, rho);
+			output.setGreeks(delta, gamma, vega, theta, rho, 0.);
 		}
 	};
+
 	
-//	public static class GreeksEngine implements Greeks.Engine {
-//
-//		@Override
-//		public void evaluate(Greeks output, long time, Type type, long expire, double strike, double price, double vola, double interestRate) {
-//			final double maturity = ((expire-time)/DUtils.DAY_MILLIS)/365.;
-//			final double delta = EuropeanBlackScholes.delta(type, price, strike, vola, maturity, interestRate);
-//			final double gamma = EuropeanBlackScholes.gamma(type, price, strike, vola, maturity, interestRate);
-//			final double theta = EuropeanBlackScholes.theta(type, price, strike, vola, maturity, interestRate);
-//			final double vega = EuropeanBlackScholes.vega(type, price, strike, vola, maturity, interestRate);
-//			final double rho = EuropeanBlackScholes.rho(type, price, strike, vola, maturity, interestRate);
-//			
-//			output.setGreeks(delta, gamma, vega, theta, rho);
-//		}
-//	}
-	
-	private static double callEurPrice(final double price, final double strike, double days, final double riskFreeRate, final double impliedVolatility){
-	    days = days/365;
+	private static double callEurPrice(final double underlyingPrice, final double strike, final double days, final double riskFreeRate, final double impliedVolatility){
+	    double maturity = days/365;
 		double a = 0, b = 0, c = 0, d1 = 0, d2 = 0;
-	    a = Math.log(price / strike);
-	    b = (riskFreeRate + 0.5 * Math.pow(impliedVolatility,2)) * days;
-	    c = impliedVolatility * Math.pow(days , 0.5);
+	    a = Math.log(underlyingPrice / strike);
+	    b = (riskFreeRate + 0.5 * Math.pow(impliedVolatility,2)) * maturity;
+	    c = impliedVolatility * Math.pow(maturity , 0.5);
 	    d1 = (a + b) / c;
-	    d2 = d1 - impliedVolatility * Math.pow(days , 0.5);
-	    return  price * standardNorm(d1) - strike * Math.exp(-riskFreeRate * days) * standardNorm(d2);
+	    d2 = d1 - impliedVolatility * Math.pow(maturity , 0.5);
+	    return  underlyingPrice * standardNorm(d1) - strike * Math.exp(-riskFreeRate * maturity) * standardNorm(d2);
 	}
 	
 	private static double putEurPrice(final double price, final double strike, double days, final double riskFreeRate, final double impliedVolatility){
@@ -110,26 +78,26 @@ public class BSEurOptionsUtils {
 	    return strike * Math.exp(-riskFreeRate * days) - price + callPrice;
 	}
 	
-	public static double impliedVolatility(Asset.Option.Type type, final double price, final double strike, double days, final double riskFreeRate, final double last){
+	public static double impliedVolatility(Asset.Option.Type type, final double underlyingPrice, final double strike, double days, final double riskFreeRate, final double optionPrice){
 		if(Asset.Option.Type.CALL.equals(type)){
-			return callEurIV(price, strike, days, riskFreeRate, last);
+			return callEurIV(underlyingPrice, strike, days, riskFreeRate, optionPrice);
 		} else {
-			return putEurIV(price, strike, days, riskFreeRate, last);
+			return putEurIV(underlyingPrice, strike, days, riskFreeRate, optionPrice);
 		}
 	}
 	
-	private static double callEurIV(final double price, final double strike,  double days, final double riskFreeRate, final double last){
+	private static double callEurIV(final double underlyingPrice, final double strike,  double days, final double riskFreeRate, final double optionPrice){
 		double High = 1;
 		double Low = 0;
 		double prezzoTarget = 0;
 		double result = 0;
-		if(last > 0){
-			prezzoTarget = last;
+		if(optionPrice > 0){
+			prezzoTarget = optionPrice;
 		}
 		if(prezzoTarget > 0){
 		    double bs = 0;
 		    while ((High - Low) > ACCURACY){
-			    bs = callEurPrice(price, strike, days, riskFreeRate, ((High + Low) / 2));
+			    bs = callEurPrice(underlyingPrice, strike, days, riskFreeRate, ((High + Low) / 2));
 			    if(bs > prezzoTarget){
 			    	High = (High + Low) / 2;
 			    } else {

@@ -25,7 +25,7 @@ public class LastPriceEngine {
 		
 		public Double apply(Book.Orders bid, Book.Orders ask) {
 			if(bid != null && ask != null){
-				return (bid.price+ask.price)/2;
+				return (bid.price+ask.price)/2.;
 			}
 			return 0.;
 		};
@@ -44,8 +44,8 @@ public class LastPriceEngine {
 	public static final BiFunction<Book.Orders, Book.Orders, Double> BidPrice = new BiFunction<Book.Orders, Book.Orders, Double>(){
 		
 		public Double apply(Book.Orders bid, Book.Orders ask) {
-			if(ask != null){
-				return ask.price;
+			if(bid != null){
+				return bid.price;
 			}
 			return 0.;
 		};

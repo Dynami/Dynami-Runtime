@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import org.dynami.core.Event;
 import org.dynami.core.assets.Asset;
 import org.dynami.core.bus.IMsg;
 import org.dynami.core.config.Config;
@@ -34,6 +35,7 @@ import org.dynami.core.portfolio.ClosedPosition;
 import org.dynami.core.portfolio.ExecutedOrder;
 import org.dynami.core.portfolio.OpenPosition;
 import org.dynami.core.services.IPortfolioService;
+import org.dynami.core.utils.DTime;
 import org.dynami.core.utils.DUtils;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.impl.Service;
@@ -56,6 +58,27 @@ public class PortfolioService extends Service implements IPortfolioService {
 
 	@Override
 	public boolean init(Config config) throws Exception {
+		
+		msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, msg)->{
+			Event e =(Event)msg;
+			if(e.is(Event.Type.OnDayClose)){
+				final long closingTime = DTime.Clock.getTime()+1;
+				final List<OpenPosition> to_remove = openPositions.values()
+					.stream()
+					.filter((o)-> o.asset instanceof Asset.ExpiringInstr)
+					.filter(o -> ((Asset.ExpiringInstr)o.asset).isExpired(closingTime)) // in this way the expired option in the date are checked
+					.collect(Collectors.toList()); 
+				
+				to_remove.forEach(o->{
+					ClosedPosition closed = new ClosedPosition(o, o.asset.lastPrice(), closingTime);
+					closedPositions.add(closed);
+
+					realized.set(realized.get()+closed.roi());
+					openPositions.remove(o.asset.symbol);
+				});
+			}
+		});
+		
 		msg.subscribe(Topics.EXECUTED_ORDER.topic, (last, _msg)->{
 			ExecutedOrder p = (ExecutedOrder)_msg;
 			ordersLog.add(p);

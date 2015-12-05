@@ -16,7 +16,6 @@
 package org.dynami.runtime.utils;
 
 import org.dynami.core.assets.Asset;
-import org.dynami.core.assets.Asset.Option;
 import org.dynami.core.assets.Asset.Option.Type;
 import org.dynami.core.assets.Greeks;
 import org.dynami.core.utils.DUtils;
@@ -26,6 +25,16 @@ import net.finmath.functions.AnalyticFormulas;
 
 public class FinMathUtils {
 	
+	public static Greeks.ImpliedVolatility approxImplVola = new Greeks.ImpliedVolatility() {
+
+		@Override
+		public double estimate(String underlyingSymbol, long time, Type type, long expire, double strike, double optionPrice, double riskFreeRate) {
+			final Asset.Tradable asset = Execution.Manager.dynami().assets().getBySymbol(underlyingSymbol).asTradable();
+			final double underPrice = asset.lastPrice();
+			final double maturity = (expire-time)/(double)DUtils.DAY_MILLIS;
+			return Math.sqrt((2*Math.PI)/maturity)*(optionPrice/underPrice);
+		}
+	};
 	
 	public static Greeks.ImpliedVolatility implVola = new Greeks.ImpliedVolatility() {
 
@@ -37,13 +46,12 @@ public class FinMathUtils {
 			final double maturity = (expire-time)/(double)DUtils.DAY_MILLIS;
 			return AnalyticFormulas.blackScholesOptionImpliedVolatility(underPrice, maturity, riskFreeRate, optionPrice, strike);  
 		}
-		
 	};
 	
 	public static Greeks.Engine greeksEngine = new Greeks.Engine() {
 
 		@Override
-		public void evaluate(Greeks output, String underlyingSymbol, long time, Type type, long expire, double strike, double price, double vola, double riskFreeRate) {
+		public void evaluate(Greeks output, String underlyingSymbol, long time, Type type, long expire, double strike, double vola, double riskFreeRate) {
 			final Asset.Tradable asset = Execution.Manager.dynami().assets().getBySymbol(underlyingSymbol).asTradable();
 			final double underPrice = asset.lastPrice();
 			
@@ -53,7 +61,7 @@ public class FinMathUtils {
 			double vega = AnalyticFormulas.blackScholesOptionVega(underPrice, riskFreeRate, vola, maturity, strike);
 			double rho = AnalyticFormulas.blackScholesOptionRho(underPrice, riskFreeRate, vola, maturity, strike);
 			double theta = 0; // AnalyticFormulas.blackScholesOptionTheta(underPrice, riskFreeRate, vola, maturity, strike)*(Option.Type.CALL.equals(type)?1:-1);
-			output.setGreeks(delta, gamma, vega, theta, rho);
+			output.setGreeks(delta, gamma, vega, theta, rho, 0.);
 		}
 	};
 

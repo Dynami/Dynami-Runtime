@@ -101,7 +101,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private Boolean optionPricing = true;
 
 	@Config.Param(name = "Option Strike Step", description = "Number of points between one option strike and another", step = .1)
-	private Double optionStep = 500.;
+	private Double optionStep = 250.;
 
 	@Config.Param(name = "Option Point Value", description = "Option point value", step = .1)
 	private Double optionPointValue = 2.5;
@@ -302,8 +302,8 @@ public class TextFileDataHandler implements IService, IDataHandler {
 				options.remove(o);
 				continue;
 			}
-			// int daysLeft = o.daysToExpiration(time);
-			int daysLeft = 20;
+			int daysLeft = o.daysToExpiration(time);
+//			int daysLeft = 20;
 			int strikesFromAtm = (int) (Math.abs(spot - o.strike) / optionStep);
 
 			double factor = DUtils.YEAR_WORKDAYS;

@@ -55,13 +55,15 @@ import org.dynami.runtime.utils.EuropeanBlackScholes;
 import org.dynami.runtime.utils.JQuantLibUtils;
 import org.dynami.runtime.utils.LastPriceEngine;
 
-@Config.Settings(name="TextFileDataHandler settings", description="bla bla bla")
+@Config.Settings(name = "TextFileDataHandler settings", description = "bla bla bla")
 public class TextFileDataHandler implements IService, IDataHandler {
-	private static final SimpleDateFormat intradaySecondsFormat = new SimpleDateFormat(TRACK_RECORD.INTRADAY_SECONDS_DATE_FORMAT);
-	private static final SimpleDateFormat intradayMinutesFormat = new SimpleDateFormat(TRACK_RECORD.INTRADAY_MINUTES_DATE_FORMAT);
+	private static final SimpleDateFormat intradaySecondsFormat = new SimpleDateFormat(
+			TRACK_RECORD.INTRADAY_SECONDS_DATE_FORMAT);
+	private static final SimpleDateFormat intradayMinutesFormat = new SimpleDateFormat(
+			TRACK_RECORD.INTRADAY_MINUTES_DATE_FORMAT);
 	private static final SimpleDateFormat dailyFormat = new SimpleDateFormat(TRACK_RECORD.DAILY_DATE_FORMAT);
 	private static final SimpleDateFormat dailyShortFormat = new SimpleDateFormat(TRACK_RECORD.DAILY_SHORT_DATE_FORMAT);
-	private final long DAY_MILLIS = 1000*60*60*24;
+	private final long DAY_MILLIS = 1000 * 60 * 60 * 24;
 	private final AtomicBoolean isStarted = new AtomicBoolean(true);
 	private final AtomicBoolean isRunning = new AtomicBoolean(false);
 	private final Random random = new Random(1L);
@@ -71,190 +73,187 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private BarData computedHistorical = new BarData();
 	private Thread thread;
 	private final List<Option> options = new CopyOnWriteArrayList<>();
-	
-	
-	//@Config.Param(name="Historical Volatility Engine", description="Historical volatility engine used to price options", values={CloseToCloseVolatilityEngine.class})
+
+	// @Config.Param(name="Historical Volatility Engine",
+	// description="Historical volatility engine used to price options",
+	// values={CloseToCloseVolatilityEngine.class})
 	private Class<? extends IVolatilityEngine> volaEngineClass = CloseToCloseVolatilityEngine.class;
-	
-	@Config.Param(name="Symbol", description="Main symbol")
+
+	@Config.Param(name = "Symbol", description = "Main symbol")
 	private String symbol = "FTSEMIB";
-	
-	@Config.Param(name="Clock frequency", description="Execution speed. Set to zero for no latency.", step=1)
+
+	@Config.Param(name = "Clock frequency", description = "Execution speed. Set to zero for no latency.", step = 1)
 	private Long clockFrequency = 200L;
 
-	@Config.Param(name="Future Bid/Ask spread", description="Bid/Ask spread expressed in points", step=0.01)
+	@Config.Param(name = "Future Bid/Ask spread", description = "Bid/Ask spread expressed in points", step = 0.01)
 	private Double bidAskSpread = 5.0;
-	
-	@Config.Param(name="Data file", description="Text file containing instrument historical data")
+
+	@Config.Param(name = "Data file", description = "Text file containing instrument historical data")
 	private File dataFile = new File("./resources/FTSEMIB_1M_2015_10_02.txt");
 
-	@Config.Param(name="Time compression", description="Compression used for time frame")
-	private Long compressionRate = IData.COMPRESSION_UNIT.MINUTE*30;
-	
-	@Config.Param(name="Future Point Value", description="Future point value", step=.1)
+	@Config.Param(name = "Time compression", description = "Compression used for time frame", min = 1, max = 100, step = 1, type = Config.Type.TimeFrame)
+	private Long compressionRate = IData.TimeUnit.Minute.millis() * 30;
+
+	@Config.Param(name = "Future Point Value", description = "Future point value", step = .1)
 	private Double futurePointValue = 5.;
-	
-	@Config.Param(name="Option Strike Step", description="Number of points between one option strike and another", step=.1)
+
+	@Config.Param(name = "Enable option pricing", description = "Activate simulated option pricing")
+	private Boolean optionPricing = true;
+
+	@Config.Param(name = "Option Strike Step", description = "Number of points between one option strike and another", step = .1)
 	private Double optionStep = 500.;
-	
-	@Config.Param(name="Option Point Value", description="Option point value", step=.1)
+
+	@Config.Param(name = "Option Point Value", description = "Option point value", step = .1)
 	private Double optionPointValue = 2.5;
-	
-	@Config.Param(name="Number of strikes", description="Number of strikes above and below first price", max=50, step=1)
+
+	@Config.Param(name = "Number of strikes", description = "Number of strikes above and below first price", max = 50, step = 1)
 	private Integer optionStrikes = 10;
-	
-	@Config.Param(name="% Margin required", description="Margination required in percentage points", step=.1)
+
+	@Config.Param(name = "% Margin required", description = "Margination required in percentage points", step = .1)
 	private Double marginRequired = .125;
 
 	@Override
 	public String id() {
 		return ID;
 	}
-	
+
 	@Override
 	public boolean init(Config config) throws Exception {
 		volaEngine = volaEngineClass.newInstance();
 		historical = restorePriceData(dataFile);
 		historical = historical.changeCompression(compressionRate);
-		
+
 		msg.forceSync(true);
-		
+
 		Market market = new Market("IDEM", "IDEM", Locale.ITALY, LocalTime.of(9, 0, 0), LocalTime.of(17, 25, 0));
-		
-		Asset.Future ftsemib = new Asset.Future(
-				symbol,
-				"IT00002344",
-				"FTSE-MIB",
-				futurePointValue,
-				.05,
-				marginRequired,
-				LastPriceEngine.MidPrice ,
-				market,
-				dailyFormat.parse("31/12/2015").getTime(),
-				1L,
-				"^FTSEMIB",
-				()->1.); // risk free rate
+
+		Asset.Future ftsemib = new Asset.Future(symbol, "IT00002344", "FTSE-MIB", futurePointValue, .05, marginRequired,
+				LastPriceEngine.MidPrice, market, dailyFormat.parse("31/12/2015").getTime(), 1L, "^FTSEMIB", () -> 1.); // risk
+																														// free
+																														// rate
 
 		msg.async(Topics.INSTRUMENT.topic, ftsemib);
-		
+
 		final Bar lastBar = historical.last();
 		final Bar firstBar = historical.get(0);
-		
-		double firstStrike = (firstBar.close%optionStep > optionStep/2)?
-										firstBar.close - firstBar.close%optionStep:
-										firstBar.close + (optionStep-firstBar.close%optionStep);
-		
-		long[] expirations = computeExpirationInPeriod(firstBar.time, lastBar.time);
-		
-		for(int i = 0; i <= optionStrikes/2; i++){
-			for(int j = 0; j < expirations.length; j++){
-				double upperStrike = firstStrike+(optionStep*i); 
-				double lowerStrike = firstStrike-(optionStep*i);
-				for(int z = 0; z < 2; z++){
-					Option.Type type = Option.Type.values()[z];
-					String upperOptionSymbol = DUtils.getOptionSymbol(symbol, type, expirations[j], upperStrike);
-					String lowerOptionSymbol = DUtils.getOptionSymbol(symbol, type, expirations[j], lowerStrike);
-					
-					Option opt0 = createOption(
-							market,
-							"MIBO", 
-							symbol,
-							DUtils.getOptionName(symbol, type, expirations[j], upperStrike), 
-							upperOptionSymbol,
-							type, 
-							optionPointValue.doubleValue(), 
-							marginRequired.doubleValue(), 
-							expirations[j], 
-							upperStrike);
-					msg.async(Topics.INSTRUMENT.topic, opt0);
-					options.add(opt0);
-					
-					Option opt1 = createOption(
-							market,
-							"MIBO", 
-							symbol,
-							DUtils.getOptionName(symbol, type, expirations[j], lowerStrike), 
-							lowerOptionSymbol,
-							type, 
-							optionPointValue.doubleValue(), 
-							marginRequired.doubleValue(), 
-							expirations[j], 
-							lowerStrike);
-					
-					msg.async(Topics.INSTRUMENT.topic, opt1);
-					options.add(opt1);
+		if (optionPricing) {
+			double firstStrike = (firstBar.close % optionStep > optionStep / 2)
+					? firstBar.close - firstBar.close % optionStep
+					: firstBar.close + (optionStep - firstBar.close % optionStep);
+
+			long[] expirations = computeExpirationInPeriod(firstBar.time, lastBar.time);
+
+			for (int i = 0; i <= optionStrikes / 2; i++) {
+				for (int j = 0; j < expirations.length; j++) {
+					double upperStrike = firstStrike + (optionStep * i);
+					double lowerStrike = firstStrike - (optionStep * i);
+					for (int z = 0; z < 2; z++) {
+						Option.Type type = Option.Type.values()[z];
+						String upperOptionSymbol = DUtils.getOptionSymbol(symbol, type, expirations[j], upperStrike);
+						String lowerOptionSymbol = DUtils.getOptionSymbol(symbol, type, expirations[j], lowerStrike);
+
+						Option opt0 = createOption(market, "MIBO", symbol,
+								DUtils.getOptionName(symbol, type, expirations[j], upperStrike), upperOptionSymbol,
+								type, optionPointValue.doubleValue(), marginRequired.doubleValue(), expirations[j],
+								upperStrike);
+						msg.async(Topics.INSTRUMENT.topic, opt0);
+						options.add(opt0);
+
+						Option opt1 = createOption(market, "MIBO", symbol,
+								DUtils.getOptionName(symbol, type, expirations[j], lowerStrike), lowerOptionSymbol,
+								type, optionPointValue.doubleValue(), marginRequired.doubleValue(), expirations[j],
+								lowerStrike);
+
+						msg.async(Topics.INSTRUMENT.topic, opt1);
+						options.add(opt1);
+					}
 				}
 			}
 		}
-		
+
 		thread = new Thread(new Runnable() {
 			private final AtomicInteger idx = new AtomicInteger(0);
+
 			@Override
 			public void run() {
-				int OPEN = 0, HIGH = 1, LOW = 2 , CLOSE = 3;
+				int OPEN = 0, HIGH = 1, LOW = 2, CLOSE = 3;
 				Bar prevBar = null, currentBar, nextBar;
-				while(isStarted.get()){
-					if(isRunning.get()){
-						if(idx.get() >= historical.size()){
+				while (isStarted.get()) {
+					if (isRunning.get()) {
+						if (idx.get() >= historical.size()) {
 							System.out.println("No more data!!! Give X or XX command to print final status");
 							break;
 						}
 						currentBar = historical.get(idx.getAndIncrement());
 						computedHistorical.append(currentBar);
-						
-						if(historical.size() > idx.get()){
-							nextBar = historical.get(idx.get());							
+
+						if (historical.size() > idx.get()) {
+							nextBar = historical.get(idx.get());
 						} else {
 							nextBar = null;
 						}
-//						System.out.println("DataProvider.init(Bar) "+currentBar);
-						HIGH = (random.nextBoolean())?1:2;
-						LOW = (HIGH == 1)?2:1;
+						// System.out.println("DataProvider.init(Bar)
+						// "+currentBar);
+						HIGH = (random.nextBoolean()) ? 1 : 2;
+						LOW = (HIGH == 1) ? 2 : 1;
 						double price = currentBar.close;
-						for(int i = 0 ; i < 4; i++){
-							if(i == OPEN){
+						for (int i = 0; i < 4; i++) {
+							if (i == OPEN) {
 								price = currentBar.open;
-							} else if(i == HIGH){
+							} else if (i == HIGH) {
 								price = currentBar.high;
-							} else if(i == LOW){
+							} else if (i == LOW) {
 								price = currentBar.low;
-							} else if(i == CLOSE){
+							} else if (i == CLOSE) {
 								price = currentBar.close;
 							}
 							
-							optionsPricing(msg, market, compressionRate, computedHistorical, volaEngine, options, optionStep, currentBar.time, price, bidAskSpread);
-							
-							Book.Orders bid = new Book.Orders(currentBar.symbol, currentBar.time, Side.BID, 1, price-bidAskSpread/2, 100);
-							msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic+currentBar.symbol, bid);
+							if(optionPricing){
+								optionsPricing(msg, market, compressionRate, computedHistorical, volaEngine, options,
+										optionStep, currentBar.time, price, bidAskSpread);								
+							}
+
+							Book.Orders bid = new Book.Orders(currentBar.symbol, currentBar.time, Side.BID, 1,
+									price - bidAskSpread / 2, 100);
+							msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, bid);
 							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, bid));
-							
-							Book.Orders ask = new Book.Orders(currentBar.symbol, currentBar.time, Side.ASK, 1, price+bidAskSpread/2, 100);
-							msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic+currentBar.symbol, ask);
+
+							Book.Orders ask = new Book.Orders(currentBar.symbol, currentBar.time, Side.ASK, 1,
+									price + bidAskSpread / 2, 100);
+							msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, ask);
 							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, ask));
-							
-							if(i == OPEN){
-								DTime.Clock.update(currentBar.time-compressionRate);
-								if(prevBar != null && currentBar.time/DAY_MILLIS > prevBar.time/DAY_MILLIS){
-									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarOpen, Event.Type.OnDayOpen));
+
+							if (i == OPEN) {
+								DTime.Clock.update(currentBar.time - compressionRate);
+								if (prevBar != null && currentBar.time / DAY_MILLIS > prevBar.time / DAY_MILLIS) {
+									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol,
+											currentBar, Event.Type.OnBarOpen, Event.Type.OnDayOpen));
 								} else {
-									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarOpen));									
+									msg.async(Topics.STRATEGY_EVENT.topic,
+											Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarOpen));
 								}
-							} else if(i == CLOSE){
+							} else if (i == CLOSE) {
 								DTime.Clock.update(currentBar.time);
-								if(nextBar == null || currentBar.time/DAY_MILLIS < nextBar.time/DAY_MILLIS){
-									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarClose, Event.Type.OnDayClose));
+								if (nextBar == null || currentBar.time / DAY_MILLIS < nextBar.time / DAY_MILLIS) {
+									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol,
+											currentBar, Event.Type.OnBarClose, Event.Type.OnDayClose));
 								} else {
-									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarClose));
+									msg.async(Topics.STRATEGY_EVENT.topic,
+											Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarClose));
 								}
-							} 
-							
+							}
+
 							try {
-								TimeUnit.MILLISECONDS.sleep(clockFrequency.longValue()/4);
-							} catch (InterruptedException e) {}
+								TimeUnit.MILLISECONDS.sleep(clockFrequency.longValue() / 4);
+							} catch (InterruptedException e) {
+							}
 						}
 						prevBar = currentBar;
 					} else {
-						try { Thread.sleep(clockFrequency.longValue()); } catch (InterruptedException e) {}
+						try {
+							Thread.sleep(clockFrequency.longValue());
+						} catch (InterruptedException e) {
+						}
 					}
 				}
 			}
@@ -262,7 +261,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		thread.start();
 		return true;
 	}
-	
+
 	@Override
 	public boolean start() {
 		isRunning.set(true);
@@ -294,44 +293,52 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	public Status getStatus() {
 		return null;
 	}
-	
-	
-	private static void optionsPricing(final IMsg msg, final Market market, final long compresssionRate, final BarData data, final IVolatilityEngine volaEngine, final List<Option> options, final double optionStep, final long time, final double spot, final double bidAskSpread){
-		for(Option o:options){
-			if(o.isExpired(time)){
+
+	private static void optionsPricing(final IMsg msg, final Market market, final long compresssionRate,
+			final BarData data, final IVolatilityEngine volaEngine, final List<Option> options, final double optionStep,
+			final long time, final double spot, final double bidAskSpread) {
+		for (Option o : options) {
+			if (o.isExpired(time)) {
 				options.remove(o);
 				continue;
 			}
-//			int daysLeft = o.daysToExpiration(time);
+			// int daysLeft = o.daysToExpiration(time);
 			int daysLeft = 20;
-			int strikesFromAtm = (int)(Math.abs(spot-o.strike)/optionStep);
-			
+			int strikesFromAtm = (int) (Math.abs(spot - o.strike) / optionStep);
+
 			double factor = DUtils.YEAR_WORKDAYS;
-			if(compresssionRate >= IData.COMPRESSION_UNIT.DAY){
-				factor = (IData.COMPRESSION_UNIT.DAY/compresssionRate)*DUtils.YEAR_WORKDAYS;
+			if (compresssionRate >= IData.TimeUnit.Day.millis()) {
+				factor = (IData.TimeUnit.Day.millis() / compresssionRate) * DUtils.YEAR_WORKDAYS;
 			} else {
 				final Duration duration = Duration.between(market.getOpenTime(), market.getCloseTime());
-				final long milliSeconds = duration.getSeconds()*1_000L;
-				factor = DUtils.YEAR_WORKDAYS*(milliSeconds/compresssionRate);
+				final long milliSeconds = duration.getSeconds() * 1_000L;
+				factor = DUtils.YEAR_WORKDAYS * (milliSeconds / compresssionRate);
 			}
-			
-			double vola = data.getVolatility(volaEngine, daysLeft)*Math.sqrt(factor);
-			if(vola > 0){
-//				System.out.println("TextFileDataHandler.optionsPricing("+o.name+") "+vola);
-				//p = c – S + Xe – r(T-t)
-//				o.setVolatility(vola);
-//				double optBidPrice = AnalyticFormulas.blackScholesOptionValue(spot-((bidAskSpread/2)*strikesFromAtm), 0., vola, (double)daysLeft/DUtils.YEAR_DAYS, o.strike);
-//				double optAskPrice = AnalyticFormulas.blackScholesOptionValue(spot+((bidAskSpread/2)*strikesFromAtm), 0., vola, (double)daysLeft/DUtils.YEAR_DAYS, o.strike);
-				
-				double optBidPrice = EuropeanBlackScholes.price(o.type, spot-((bidAskSpread/2)*strikesFromAtm), o.strike, vola, (double)daysLeft/DUtils.YEAR_DAYS, 1.);
-				double optAskPrice = EuropeanBlackScholes.price(o.type, spot+((bidAskSpread/2)*strikesFromAtm), o.strike, vola, (double)daysLeft/DUtils.YEAR_DAYS, 1.);
-				
+
+			double vola = data.getVolatility(volaEngine, daysLeft) * Math.sqrt(factor);
+			if (vola > 0) {
+				// System.out.println("TextFileDataHandler.optionsPricing("+o.name+")
+				// "+vola);
+				// p = c – S + Xe – r(T-t)
+				// o.setVolatility(vola);
+				// double optBidPrice =
+				// AnalyticFormulas.blackScholesOptionValue(spot-((bidAskSpread/2)*strikesFromAtm),
+				// 0., vola, (double)daysLeft/DUtils.YEAR_DAYS, o.strike);
+				// double optAskPrice =
+				// AnalyticFormulas.blackScholesOptionValue(spot+((bidAskSpread/2)*strikesFromAtm),
+				// 0., vola, (double)daysLeft/DUtils.YEAR_DAYS, o.strike);
+
+				double optBidPrice = EuropeanBlackScholes.price(o.type, spot - ((bidAskSpread / 2) * strikesFromAtm),
+						o.strike, vola, (double) daysLeft / DUtils.YEAR_DAYS, 1.);
+				double optAskPrice = EuropeanBlackScholes.price(o.type, spot + ((bidAskSpread / 2) * strikesFromAtm),
+						o.strike, vola, (double) daysLeft / DUtils.YEAR_DAYS, 1.);
+
 				Book.Orders bid = new Book.Orders(o.symbol, time, Side.BID, 1, optBidPrice, 100);
-				msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic+o.symbol, bid);
+				msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + o.symbol, bid);
 				msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(o.symbol, bid));
-				
+
 				Book.Orders ask = new Book.Orders(o.symbol, time, Side.ASK, 1, optAskPrice, 100);
-				msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic+o.symbol, ask);
+				msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + o.symbol, ask);
 				msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(o.symbol, ask));
 			}
 		}
@@ -346,14 +353,14 @@ public class TextFileDataHandler implements IService, IDataHandler {
 			String line = null;
 			boolean isFirst = true;
 			BarData barData = new BarData();
-			while((line = reader.readLine()) != null) {
-				if(isFirst) {
+			while ((line = reader.readLine()) != null) {
+				if (isFirst) {
 					isFirst = false;
 					continue;
 				}
 				tmp = line.split("\t");
 
-				if(dateParser == null){
+				if (dateParser == null) {
 					dateParser = getApproprieateFormat(tmp[TRACK_RECORD.DATE]);
 				}
 				long time = dateParser.parse(tmp[TRACK_RECORD.DATE]).getTime();
@@ -370,21 +377,21 @@ public class TextFileDataHandler implements IService, IDataHandler {
 			e.printStackTrace();
 			return null;
 		} finally {
-			if(reader != null)
+			if (reader != null)
 				reader.close();
 		}
 	}
 
-	private static SimpleDateFormat getApproprieateFormat(final String in){
-		if(in != null){
+	private static SimpleDateFormat getApproprieateFormat(final String in) {
+		if (in != null) {
 			final int lenght = in.length();
-			if(lenght == TRACK_RECORD.DAILY_DATE_FORMAT.length()){
+			if (lenght == TRACK_RECORD.DAILY_DATE_FORMAT.length()) {
 				return dailyFormat;
-			} else if(lenght == TRACK_RECORD.DAILY_SHORT_DATE_FORMAT.length()){
+			} else if (lenght == TRACK_RECORD.DAILY_SHORT_DATE_FORMAT.length()) {
 				return dailyShortFormat;
-			} else if(lenght == TRACK_RECORD.INTRADAY_MINUTES_DATE_FORMAT.length()){
+			} else if (lenght == TRACK_RECORD.INTRADAY_MINUTES_DATE_FORMAT.length()) {
 				return intradayMinutesFormat;
-			} else if(lenght == TRACK_RECORD.INTRADAY_SECONDS_DATE_FORMAT.length()){
+			} else if (lenght == TRACK_RECORD.INTRADAY_SECONDS_DATE_FORMAT.length()) {
 				return intradaySecondsFormat;
 			} else {
 				return null;
@@ -406,7 +413,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		public static final String DAILY_DATE_FORMAT = "dd/MM/yyyy";
 		public static final String DAILY_SHORT_DATE_FORMAT = "yyyyMMdd";
 	}
-	
+
 	public String getSymbol() {
 		return symbol;
 	}
@@ -430,6 +437,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	public void setBidAskSpread(Double bidAskSpread) {
 		this.bidAskSpread = bidAskSpread;
 	}
+
 	public File getDataFile() {
 		return dataFile;
 	}
@@ -461,7 +469,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	public void setOptionStrikes(Integer optionStrikes) {
 		this.optionStrikes = optionStrikes;
 	}
-	
+
 	public Class<? extends IVolatilityEngine> getVolaEngineClass() {
 		return volaEngineClass;
 	}
@@ -494,37 +502,26 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		this.marginRequired = marginRequired;
 	}
 
-	public static Asset.Option createOption(
-			Market market,
-			String prefix, String parent, String name, 
-			String isin, 
-			Option.Type type,
-			double pointValue,
-			double margin,
-			long expire, 
-			double strike) throws Exception{
-		
-		return new Asset.Option(
-				DUtils.getOptionSymbol(prefix, type, expire, strike), 
-				isin, 
-				DUtils.getOptionName(prefix, type, expire, strike), 
-				pointValue, 
-				.05, 
-				margin, 
-				LastPriceEngine.MidPrice,
-				market, 
-				expire, 
-				1L, 
-				parent, 
-				()->0., // fake risk free rate provider
-				strike, 
-				type, 
-				Asset.Option.Exercise.European,
-				new JQuantLibUtils.GreeksEngine(), 
+	public Boolean isOptionPricing() {
+		return optionPricing;
+	}
+
+	public void setOptionPricing(Boolean optionPricing) {
+		this.optionPricing = optionPricing;
+	}
+
+	public static Asset.Option createOption(Market market, String prefix, String parent, String name, String isin,
+			Option.Type type, double pointValue, double margin, long expire, double strike) throws Exception {
+
+		return new Asset.Option(DUtils.getOptionSymbol(prefix, type, expire, strike), isin,
+				DUtils.getOptionName(prefix, type, expire, strike), pointValue, .05, margin, LastPriceEngine.MidPrice,
+				market, expire, 1L, parent, () -> 0., // fake risk free rate
+														// provider
+				strike, type, Asset.Option.Exercise.European, new JQuantLibUtils.GreeksEngine(),
 				BSEurOptionsUtils.implVola);
 	}
-	
-	private static long[] computeExpirationInPeriod(long start, long end){
+
+	private static long[] computeExpirationInPeriod(long start, long end) {
 		Calendar cal = Calendar.getInstance();
 		cal.setTimeInMillis(start);
 		cal.set(Calendar.DAY_OF_MONTH, 1);
@@ -532,25 +529,24 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		int dayOfWeek;
 		int currentMonth = cal.get(Calendar.MONTH);
 		int countFriday = 0;
-		while(cal.getTimeInMillis() <= end){
+		while (cal.getTimeInMillis() <= end) {
 			dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
-			if(currentMonth != cal.get(Calendar.MONTH)){
+			if (currentMonth != cal.get(Calendar.MONTH)) {
 				countFriday = 0;
 				currentMonth = cal.get(Calendar.MONTH);
 			}
-			
-			if(dayOfWeek%Calendar.FRIDAY == 0){
+
+			if (dayOfWeek % Calendar.FRIDAY == 0) {
 				++countFriday;
-				if(countFriday == 3){
+				if (countFriday == 3) {
 					expires.add(cal.getTimeInMillis());
-					//System.out.println("TextFileDataHandler.expirations( ) "+DUtils.DATE_FORMAT.format(cal.getTimeInMillis())+ " "+cal.get(Calendar.DAY_OF_WEEK));
+					// System.out.println("TextFileDataHandler.expirations( )
+					// "+DUtils.DATE_FORMAT.format(cal.getTimeInMillis())+ "
+					// "+cal.get(Calendar.DAY_OF_WEEK));
 				}
-			} 
+			}
 			cal.add(Calendar.DAY_OF_MONTH, 1);
 		}
-		return expires.stream()
-				.mapToLong(Long::longValue)
-				.filter((o)-> o >= start)
-				.toArray();
+		return expires.stream().mapToLong(Long::longValue).filter((o) -> o >= start).toArray();
 	}
 }

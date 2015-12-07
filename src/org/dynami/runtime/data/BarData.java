@@ -31,7 +31,7 @@ public class BarData implements IData {
 	private final int BUFFER_SIZE = 1024;
 	private List<Bar> data = new ArrayList<>(BUFFER_SIZE);
 	private double max = 0., min = Double.MAX_VALUE;
-	private long compression = COMPRESSION_UNIT.MINUTE;
+	private long compression = TimeUnit.Minute.millis();
 	
 	public BarData(){};
 	

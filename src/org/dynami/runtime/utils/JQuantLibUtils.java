@@ -115,17 +115,12 @@ public class JQuantLibUtils {
 			if(tradable instanceof Asset.Option){
 				final Asset.Option opt = (Asset.Option)tradable;
 				final PlainVanillaPayoff payoff = new PlainVanillaPayoff(opt.type.equals(Asset.Option.Type.CALL)?org.jquantlib.instruments.Option.Type.Call:org.jquantlib.instruments.Option.Type.Put, opt.strike);
-				final double t = ((opt.expire-time)/DUtils.DAY_MILLIS)/DUtils.YEAR_DAYS;
-				
-				final double mean = Math.log(price)+(riskfreeRate - 0.5 * vola * vola) * t;
-			    double stdDev = vola * Math.sqrt(t);
+				final PricingEngine engine ;
 				return 0;
 			} else {
 				return price;
 			}
 		}
-		
-		
 	};
 	
 	public static final class GreeksEngine implements Greeks.Engine {

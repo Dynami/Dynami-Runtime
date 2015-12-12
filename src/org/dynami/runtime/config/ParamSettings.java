@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Alessandro Atria - a.atria@gmail.com
+ * Copyright 2013 Alessandro Atria
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,23 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.dynami.runtime;
+package org.dynami.runtime.config;
 
-import org.dynami.core.IStage;
-import org.dynami.core.IStrategy;
-import org.dynami.runtime.config.StrategySettings;
-
-public interface IStrategyExecutor {
+public class ParamSettings {
+	private String fieldName;
+	private Object value;
 	
-	public void setup(IServiceBus serviceBus);
-	
-	public void load(final IStrategy strategy, final StrategySettings strategySettings) throws Exception;
-	
-	public void dispose();
-	
-	public IStage getActiveStage();
-
-	public static enum Keys {
-		CurrentStageCursor
+	public String getFieldName() {
+		return fieldName;
+	}
+	public void setFieldName(String fieldName) {
+		this.fieldName = fieldName;
+	}
+	public Object getValue() {
+		return value;
+	}
+	public void setValue(Object value) {
+		this.value = value;
 	}
 }

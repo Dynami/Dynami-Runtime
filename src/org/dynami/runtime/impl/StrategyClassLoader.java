@@ -20,19 +20,42 @@ import java.io.InputStream;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
+import org.dynami.core.IStage;
 import org.dynami.core.IStrategy;
+import org.dynami.core.config.Config;
+import org.dynami.runtime.models.StrategyComponents;
 
 public class StrategyClassLoader extends URLClassLoader {
 
 	private final JarFile jarFile;
+	private Class<IStrategy> strategy;
+	private List<Class<IStage>> stages = new ArrayList<>();
+	private List<Class<?>> configs = new ArrayList<>();
+	
 	public StrategyClassLoader(String path, ClassLoader parent) throws Exception {
 		super(new URL[] { new URL("file:" + path) }, parent);
 		this.jarFile = new JarFile(path);
+		loadDynamiComponents();
+	}
+	
+	public StrategyComponents getStrategyComponents(){
+		return new StrategyComponents(jarFile.getName(), strategy, Collections.unmodifiableList(stages), Collections.unmodifiableList(configs));
+	}
+	
+	public Class<IStrategy> getStrategy() {
+		return strategy;
+	}
+	
+	public List<Class<IStage>> getStages() {
+		return stages;
 	}
 	
 	public Manifest getManifest() throws Exception{
@@ -60,12 +83,11 @@ public class StrategyClassLoader extends URLClassLoader {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public Class<IStrategy> getStrategyClass(){
-		//AddonDescriptor<IStrategy> addon = null;
+	private void loadDynamiComponents() {
 		try {
 			JarEntry entry;
 			String className;
-			Class<IStrategy> strategy = null;
+			
 			int length;
 			for (Enumeration<JarEntry> _enum = jarFile.entries(); _enum.hasMoreElements();) {
 				entry = _enum.nextElement();
@@ -77,9 +99,17 @@ public class StrategyClassLoader extends URLClassLoader {
 						Class<?> c = loadClass(className);
 						Class<?>[] inter = c.getInterfaces();
 						for (Class<?> inf : inter) {
-							if (inf.equals(IStrategy.class) && !Modifier.isAbstract(c.getModifiers())) {
-								strategy = (Class<IStrategy>) c;
-								break;
+							if (this.strategy == null && inf.equals(IStrategy.class) && !Modifier.isAbstract(c.getModifiers())) {
+								this.strategy = (Class<IStrategy>) c;
+								if(c.isAnnotationPresent(Config.Settings.class)){
+									configs.add(c);
+								}
+							}
+							if(inf.equals(IStage.class) && !Modifier.isAbstract(c.getModifiers())){
+								stages.add((Class<IStage>)c);
+								if(c.isAnnotationPresent(Config.Settings.class)){
+									configs.add(c);
+								}
 							}
 						}
 					} catch (Error er) {
@@ -87,29 +117,11 @@ public class StrategyClassLoader extends URLClassLoader {
 					}
 				}
 			}
-			return strategy;
-
-//			if (strategy != null) {
-//				ZipEntry descriptorEntry = jarFile.getEntry("META-INF/"+ StrategyDescriptor.FILE_NAME);
-//				if (descriptorEntry == null) {
-//					return addon;
-//				}
-//				addon = new AddonDescriptor<IStrategy>(strategy);
-//				//addon.setDescriptor(loadStrategyDescriptor(jarFile, descriptorEntry));
-//				return addon;
-//			}
 		} catch(Exception e){
 			e.printStackTrace();
 		}
-		return null;
 	}
-	
-//	private StrategyDescriptor loadStrategyDescriptor(final JarFile jarFile, final ZipEntry descriptorEntry) throws Exception{
-//		try(InputStream inputStream = jarFile.getInputStream(descriptorEntry)){
-//			return JSON.Parser.deserialize(inputStream);
-//		}
-//	}
-
+		
 	/** Close references to opened zip files (via getResourceAsStream) */
 	public void close() {
 		try {
@@ -118,29 +130,4 @@ public class StrategyClassLoader extends URLClassLoader {
 			e.printStackTrace();
 		}
 	}
-	
-//	public static class AddonDescriptor<T> {
-//		private Class<T> clazz;
-//		private StrategyDescriptor descriptor;
-//		
-//		public AddonDescriptor(Class<T> clazz) {
-//			this.clazz = clazz;
-//		}
-//
-//		public Class<T> getClazz() {
-//			return clazz;
-//		}
-//
-//		public void setClazz(Class<T> clazz) {
-//			this.clazz = clazz;
-//		}
-//
-//		public StrategyDescriptor getDescriptor() {
-//			return descriptor;
-//		}
-//
-//		public void setDescriptor(StrategyDescriptor descriptor) {
-//			this.descriptor = descriptor;
-//		}
-//	}
 }

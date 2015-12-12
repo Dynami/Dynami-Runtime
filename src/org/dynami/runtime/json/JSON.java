@@ -18,12 +18,7 @@ package org.dynami.runtime.json;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.Date;
-
-import org.dynami.core.descriptors.StrategyDescriptor;
-import org.dynami.runtime.models.StrategyInstance;
 
 import flexjson.JSONDeserializer;
 import flexjson.JSONSerializer;
@@ -37,7 +32,6 @@ public enum JSON {
 	
 	private final JSONSerializer serializer = new JSONSerializer();
 	
-	
 	public void serialize(File file, Object obj) throws Exception {
 		try(FileWriter writer = new FileWriter(file)){
 			serializer.prettyPrint(true);
@@ -46,19 +40,11 @@ public enum JSON {
 		}
 	}
 	
-	public StrategyInstance deserialize(File file) throws Exception {
-		JSONDeserializer<StrategyInstance> deserializer =  new JSONDeserializer<>();
+	public <T> T deserialize(File file, Class<T> clazz) throws Exception {
+		JSONDeserializer<T> deserializer =  new JSONDeserializer<>();
 		deserializer.use(Date.class, new DateTransformer(DATE_FORMAT));
 		try(FileReader reader = new FileReader(file)){
-			return deserializer.deserialize(reader, StrategyInstance.class);
-		}
-	}
-	
-	public StrategyDescriptor deserialize(InputStream input) throws Exception {
-		JSONDeserializer<StrategyDescriptor> deserializer =  new JSONDeserializer<>();
-		deserializer.use(Date.class, new DateTransformer(DATE_FORMAT));
-		try(InputStreamReader reader = new InputStreamReader(input)){
-			return deserializer.deserialize(reader, StrategyDescriptor.class);
+			return deserializer.deserialize(reader, clazz);
 		}
 	}
 }

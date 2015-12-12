@@ -26,6 +26,7 @@ import org.dynami.core.IDynami;
 import org.dynami.core.IStage;
 import org.dynami.core.IStrategy;
 import org.dynami.core.ITechnicalIndicator;
+import org.dynami.core.config.Config;
 import org.dynami.core.services.IAssetService;
 import org.dynami.core.services.IDataService;
 import org.dynami.core.services.IOrderService;
@@ -33,6 +34,8 @@ import org.dynami.core.services.IPortfolioService;
 import org.dynami.core.services.ITraceService;
 import org.dynami.runtime.IServiceBus;
 import org.dynami.runtime.IStrategyExecutor;
+import org.dynami.runtime.config.ClassSettings;
+import org.dynami.runtime.config.StrategySettings;
 import org.dynami.runtime.topics.Topics;
 
 public class StrategyExecutor implements IStrategyExecutor, IDynami {
@@ -42,8 +45,8 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 	private final AtomicBoolean endStrategy = new AtomicBoolean(false);
 	private IServiceBus serviceBus;
 	private IStrategy strategy;
+	private StrategySettings strategySettings;
 	private IStage stage, previousStage;
-
 
 	@Override
 	public void setup(IServiceBus serviceBus) {
@@ -51,10 +54,10 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 	}
 
 	@Override
-	public void load(final IStrategy strategy) throws Exception{
+	public void load(final IStrategy strategy, final StrategySettings strategySettings) throws Exception{
 		this.strategy = strategy;
 		this.stage = strategy.startsWith();
-
+		this.strategySettings = strategySettings;
 		Execution.Manager.msg().subscribe(Topics.STRATEGY_EVENT.topic, (last, msg)->{
 			if(last){
 				Event event = (Event)msg;
@@ -62,8 +65,22 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 				lastExecutedEvent.set(exec(lastIncomingEvent.get()));
 			}
 		});
-
+		ClassSettings classSettings = strategySettings.getClassSettings(strategy.getClass());
+		if(classSettings != null){
+			applySettings(strategy, classSettings);
+		}
 		this.strategy.onStrategyStart(this);
+	}
+	
+	private static void applySettings(final Object parent, final ClassSettings classSettings) throws Exception{
+		final Field[] fields = parent.getClass().getDeclaredFields();
+		for(Field f:fields){
+			if(f.isAnnotationPresent(Config.Param.class)){
+				Object value = classSettings.getParams().get(f.getName());
+				f.setAccessible(true);
+				f.set(parent, value);
+			}
+		}
 	}
 
 	private synchronized Event exec(Event event){
@@ -98,6 +115,10 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 		technicalIndicators.clear();
 		try {
 			extractUserUtilities(stage, technicalIndicators);
+			ClassSettings classSettings = strategySettings.getClassSettings(stage.getClass());
+			if(classSettings != null){
+				applySettings(stage, classSettings);
+			}
 			stage.setup(this);
 		} catch (Exception e) {
 			Execution.Manager.msg().async(Topics.STRATEGY_ERRORS.topic, e);

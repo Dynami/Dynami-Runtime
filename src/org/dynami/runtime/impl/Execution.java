@@ -15,6 +15,8 @@
  */
 package org.dynami.runtime.impl;
 
+import java.io.File;
+
 import org.dynami.core.IDynami;
 import org.dynami.core.IStrategy;
 import org.dynami.core.bus.IMsg;
@@ -25,6 +27,8 @@ import org.dynami.runtime.IExecutionManager;
 import org.dynami.runtime.IServiceBus;
 import org.dynami.runtime.IStrategyExecutor;
 import org.dynami.runtime.bus.Msg2;
+import org.dynami.runtime.config.StrategySettings;
+import org.dynami.runtime.json.JSON;
 import org.dynami.runtime.topics.Topics;
 
 public enum Execution implements IExecutionManager {
@@ -32,7 +36,7 @@ public enum Execution implements IExecutionManager {
 
 	private final IServiceBus serviceBus = new ServiceBus();
 	private IStrategyExecutor engine = new StrategyExecutor();
-	//private StrategyInstance strategyInstance;
+	private StrategySettings strategySettings;
 	private String strategyJarPath;
 	private IDynami dynami = (IDynami)engine;
 
@@ -87,7 +91,7 @@ public enum Execution implements IExecutionManager {
 		try {
 			if(stateMachine.canChangeState(State.Selected)){
 				if(strategyInstanceFilePath != null && !strategyInstanceFilePath.equals("")){
-					//strategyInstance = JSON.Parser.deserialize(new File(strategyInstanceFilePath));
+					strategySettings = JSON.Parser.deserialize(new File(strategyInstanceFilePath), StrategySettings.class);
 				}
 				this.strategyJarPath = strategyJarPath;
 				return stateMachine.changeState(State.Selected);
@@ -105,10 +109,10 @@ public enum Execution implements IExecutionManager {
 		if(stateMachine.canChangeState(State.Loaded)){
 			try {
 				try(StrategyClassLoader loader = new StrategyClassLoader(strategyJarPath, getClass().getClassLoader())){
-					final IStrategy strategy = loader.getStrategyClass().newInstance();
+					final IStrategy strategy = loader.getStrategy().newInstance();
 
 					engine.setup(serviceBus);
-					engine.load(strategy);
+					engine.load(strategy, strategySettings);
 				}
 				return stateMachine.changeState(State.Loaded);
 			} catch (Exception e) {

@@ -57,7 +57,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 	public void load(final IStrategy strategy, final StrategySettings strategySettings) throws Exception{
 		this.strategy = strategy;
 		this.stage = strategy.startsWith();
-		this.strategySettings = strategySettings;
+		this.strategySettings = (strategySettings != null)?strategySettings:new StrategySettings();
 		Execution.Manager.msg().subscribe(Topics.STRATEGY_EVENT.topic, (last, msg)->{
 			if(last){
 				Event event = (Event)msg;
@@ -65,7 +65,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 				lastExecutedEvent.set(exec(lastIncomingEvent.get()));
 			}
 		});
-		ClassSettings classSettings = strategySettings.getClassSettings(strategy.getClass());
+		ClassSettings classSettings = this.strategySettings.getClassSettings(strategy.getClass());
 		if(classSettings != null){
 			applySettings(strategy, classSettings);
 		}

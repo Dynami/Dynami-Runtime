@@ -15,9 +15,17 @@
  */
 package org.dynami.runtime.config;
 
+import org.dynami.core.config.Config;
+
 public class ParamSettings {
+	private Config.Param param;
+	private Class<?> type;
 	private String fieldName;
 	private Object value;
+	
+	public String getName(){
+		return !param.name().equals("")?param.name():fieldName;
+	}
 	
 	public String getFieldName() {
 		return fieldName;
@@ -30,5 +38,17 @@ public class ParamSettings {
 	}
 	public void setValue(Object value) {
 		this.value = value;
+	}
+	public Config.Param getParam() {
+		return param;
+	}
+	public void setParam(Config.Param param) {
+		this.param = param;
+	}
+	public Class<?> getType() {
+		return type;
+	}
+	public void setType(Class<?> type) {
+		this.type = type;
 	}
 }

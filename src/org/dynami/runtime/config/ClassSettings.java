@@ -22,7 +22,7 @@ public class ClassSettings {
 	private String settingsClassName;
 	private String name;
 	private String description;
-	private Map<String, ParamSettings> params = new HashMap<>();
+	private final Map<String, ParamSettings> params = new HashMap<>();
 	
 	public String getSettingsClassName() {
 		return settingsClassName;
@@ -48,7 +48,7 @@ public class ClassSettings {
 	public Map<String, ParamSettings> getParams() {
 		return params;
 	}
-	public void setParams(Map<String, ParamSettings> params) {
-		this.params = params;
-	}
+//	public void setParams(Map<String, ParamSettings> params) {
+//		this.params = params;
+//	}
 }

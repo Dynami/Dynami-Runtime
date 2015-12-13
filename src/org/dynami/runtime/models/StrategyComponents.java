@@ -19,18 +19,19 @@ import java.util.List;
 
 import org.dynami.core.IStage;
 import org.dynami.core.IStrategy;
+import org.dynami.runtime.config.StrategySettings;
 
 public class StrategyComponents {
 	public final String jarName;
 	public final Class<IStrategy> strategyClass;
 	public final List<Class<IStage>> stageClasses;
-	public final List<Class<?>> configClasses;
+	public final StrategySettings strategySettings;
 	
-	public StrategyComponents(String jarName, Class<IStrategy> strategyClass, List<Class<IStage>> stageClasses, List<Class<?>> configClasses){
+	public StrategyComponents(String jarName, Class<IStrategy> strategyClass, List<Class<IStage>> stageClasses, StrategySettings strategySettings){
 		this.jarName = jarName;
 		this.strategyClass = strategyClass;
 		this.stageClasses = stageClasses;
-		this.configClasses = configClasses;
+		this.strategySettings = strategySettings;
 	}
 	
 	@Override

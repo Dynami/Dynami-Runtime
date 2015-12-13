@@ -17,6 +17,7 @@ package org.dynami.runtime.impl;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -31,6 +32,9 @@ import java.util.jar.Manifest;
 import org.dynami.core.IStage;
 import org.dynami.core.IStrategy;
 import org.dynami.core.config.Config;
+import org.dynami.runtime.config.ClassSettings;
+import org.dynami.runtime.config.ParamSettings;
+import org.dynami.runtime.config.StrategySettings;
 import org.dynami.runtime.models.StrategyComponents;
 
 public class StrategyClassLoader extends URLClassLoader {
@@ -38,7 +42,7 @@ public class StrategyClassLoader extends URLClassLoader {
 	private final JarFile jarFile;
 	private Class<IStrategy> strategy;
 	private List<Class<IStage>> stages = new ArrayList<>();
-	private List<Class<?>> configs = new ArrayList<>();
+	private StrategySettings strategySettings = new StrategySettings();
 	
 	public StrategyClassLoader(String path, ClassLoader parent) throws Exception {
 		super(new URL[] { new URL("file:" + path) }, parent);
@@ -47,7 +51,7 @@ public class StrategyClassLoader extends URLClassLoader {
 	}
 	
 	public StrategyComponents getStrategyComponents(){
-		return new StrategyComponents(jarFile.getName(), strategy, Collections.unmodifiableList(stages), Collections.unmodifiableList(configs));
+		return new StrategyComponents(jarFile.getName(), strategy, Collections.unmodifiableList(stages), strategySettings);
 	}
 	
 	public Class<IStrategy> getStrategy() {
@@ -82,6 +86,32 @@ public class StrategyClassLoader extends URLClassLoader {
 		}
 	}
 	
+	private static ClassSettings extractClassSettings(Class<?> clazz) throws Exception {
+		ClassSettings classSettings = new ClassSettings();
+		Config.Settings settings = clazz.getAnnotation(Config.Settings.class);
+		if(settings != null){
+			String name = !settings.name().equals("")?settings.name():clazz.getSimpleName();
+			String description = settings.description();
+			classSettings.setName(name);
+			classSettings.setDescription(description);
+		}
+		Field[] fields = clazz.getDeclaredFields();
+		Object obj = clazz.newInstance();
+		for(Field f:fields){
+			Config.Param p = f.getAnnotation(Config.Param.class);
+			if(p != null){
+				ParamSettings paramSettings = new ParamSettings();
+				f.setAccessible(true);
+				paramSettings.setType(f.getType());
+				paramSettings.setParam(p);
+				paramSettings.setFieldName(f.getName());
+				paramSettings.setValue(f.get(obj));
+				classSettings.getParams().put(f.getName(), paramSettings);
+			}
+		}
+		return classSettings;
+	}
+	
 	@SuppressWarnings("unchecked")
 	private void loadDynamiComponents() {
 		try {
@@ -101,15 +131,13 @@ public class StrategyClassLoader extends URLClassLoader {
 						for (Class<?> inf : inter) {
 							if (this.strategy == null && inf.equals(IStrategy.class) && !Modifier.isAbstract(c.getModifiers())) {
 								this.strategy = (Class<IStrategy>) c;
-								if(c.isAnnotationPresent(Config.Settings.class)){
-									configs.add(c);
-								}
+								ClassSettings classSettings = extractClassSettings(c);
+								strategySettings.getSettings().put(c, classSettings);
 							}
 							if(inf.equals(IStage.class) && !Modifier.isAbstract(c.getModifiers())){
 								stages.add((Class<IStage>)c);
-								if(c.isAnnotationPresent(Config.Settings.class)){
-									configs.add(c);
-								}
+								ClassSettings classSettings = extractClassSettings(c);
+								strategySettings.getSettings().put(c, classSettings);
 							}
 						}
 					} catch (Error er) {

@@ -132,12 +132,12 @@ public class StrategyClassLoader extends URLClassLoader {
 							if (this.strategy == null && inf.equals(IStrategy.class) && !Modifier.isAbstract(c.getModifiers())) {
 								this.strategy = (Class<IStrategy>) c;
 								ClassSettings classSettings = extractClassSettings(c);
-								strategySettings.getSettings().put(c, classSettings);
+								strategySettings.getSettings().put(c.getName(), classSettings);
 							}
 							if(inf.equals(IStage.class) && !Modifier.isAbstract(c.getModifiers())){
 								stages.add((Class<IStage>)c);
 								ClassSettings classSettings = extractClassSettings(c);
-								strategySettings.getSettings().put(c, classSettings);
+								strategySettings.getSettings().put(c.getName(), classSettings);
 							}
 						}
 					} catch (Error er) {

@@ -21,7 +21,7 @@ import java.util.Map;
 public class StrategySettings {
 	private String name;	
 	private String description;
-	private Map<Class<?>, ClassSettings> settings = new HashMap<>();
+	private Map<String, ClassSettings> settings = new HashMap<>();
 	
 	public String getName() {
 		return name;
@@ -35,13 +35,22 @@ public class StrategySettings {
 	public void setDescription(String description) {
 		this.description = description;
 	}
-	public Map<Class<?>, ClassSettings> getSettings() {
+	public Map<String, ClassSettings> getSettings() {
 		return settings;
 	}
-	public void setSettings(Map<Class<?>, ClassSettings> settings) {
+	public void setSettings(Map<String, ClassSettings> settings) {
 		this.settings = settings;
 	}
-	public ClassSettings getClassSettings(Class<?> clazz){
+	public ClassSettings getClassSettings(String clazz){
 		return settings.get(clazz);
+	}
+	
+	public void merge(StrategySettings _settings){
+		settings.keySet().forEach(k->{
+			final ClassSettings _cs = _settings.getClassSettings(k);
+			if(_cs != null){
+				settings.get(k).merge(_cs);
+			}
+		});
 	}
 }

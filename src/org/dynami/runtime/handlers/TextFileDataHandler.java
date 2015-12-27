@@ -42,12 +42,12 @@ import org.dynami.core.config.Config;
 import org.dynami.core.data.Bar;
 import org.dynami.core.data.IData;
 import org.dynami.core.data.IVolatilityEngine;
+import org.dynami.core.data.vola.CloseToCloseVolatilityEngine;
 import org.dynami.core.utils.DTime;
 import org.dynami.core.utils.DUtils;
 import org.dynami.runtime.IDataHandler;
 import org.dynami.runtime.IService;
 import org.dynami.runtime.data.BarData;
-import org.dynami.runtime.data.vola.CloseToCloseVolatilityEngine;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 import org.dynami.runtime.utils.BSEurOptionsUtils;
@@ -92,7 +92,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private File dataFile = new File("./resources/FTSEMIB_1M_2015_10_02.txt");
 
 	@Config.Param(name = "Time compression", description = "Compression used for time frame", min = 1, max = 100, step = 1, type = Config.Type.TimeFrame)
-	private Long compressionRate = IData.TimeUnit.Minute.millis() * 30;
+	private Long compressionRate = IData.TimeUnit.Day.millis() * 1;
 
 	@Config.Param(name = "Future Point Value", description = "Future point value", step = .1)
 	private Double futurePointValue = 5.;

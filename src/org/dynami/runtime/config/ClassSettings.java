@@ -48,6 +48,15 @@ public class ClassSettings {
 	public Map<String, ParamSettings> getParams() {
 		return params;
 	}
+	
+	public void merge(ClassSettings _settings){
+		params.keySet().forEach(k->{
+			ParamSettings _ps = _settings.params.get(k);
+			if(_ps != null){
+				params.get(k).setValue(_ps.getValue());
+			}
+		});
+	}
 //	public void setParams(Map<String, ParamSettings> params) {
 //		this.params = params;
 //	}

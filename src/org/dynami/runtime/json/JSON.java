@@ -18,10 +18,14 @@ package org.dynami.runtime.json;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.lang.reflect.Type;
 import java.util.Date;
 
 import flexjson.JSONDeserializer;
 import flexjson.JSONSerializer;
+import flexjson.ObjectBinder;
+import flexjson.ObjectFactory;
+import flexjson.transformer.AbstractTransformer;
 import flexjson.transformer.DateTransformer;
 
 public enum JSON {
@@ -43,8 +47,31 @@ public enum JSON {
 	public <T> T deserialize(File file, Class<T> clazz) throws Exception {
 		JSONDeserializer<T> deserializer =  new JSONDeserializer<>();
 		deserializer.use(Date.class, new DateTransformer(DATE_FORMAT));
+		deserializer.use(Class.class, new JSON.ClassTrasformer());
 		try(FileReader reader = new FileReader(file)){
 			return deserializer.deserialize(reader, clazz);
+		}
+	}
+	
+	@SuppressWarnings("rawtypes")
+	static class ClassTrasformer extends AbstractTransformer implements ObjectFactory {
+		@Override
+		public Object instantiate(ObjectBinder context, Object value, Type targetType, Class targetClass) {
+			try {
+				return Class.forName((String)value);
+			} catch (ClassNotFoundException e) {
+				e.printStackTrace();
+				return null;
+			}
+		}
+		
+		@Override
+		public void transform(Object value) {
+			if( value == null ) {
+	            getContext().write("null");
+	            return;
+	        }
+	        getContext().writeQuoted( ((Class<?>)value).getName() );
 		}
 	}
 }

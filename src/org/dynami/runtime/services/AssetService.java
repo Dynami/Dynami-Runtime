@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 
 import org.dynami.core.Event;
 import org.dynami.core.assets.Asset;
+import org.dynami.core.assets.Market;
 import org.dynami.core.assets.OptionChain;
 import org.dynami.core.bus.IMsg;
 import org.dynami.core.config.Config;
@@ -79,6 +80,12 @@ public class AssetService extends Service implements IAssetService  {
 		});
 		return true;
 	}
+	
+	@Override
+	public Market getMarketBySymbol(String symbol) {
+		Asset a = getBySymbol(symbol);
+		return a.market;
+	}
 
 	@Override
 	public Asset getBySymbol(String symbol) {
@@ -100,6 +107,8 @@ public class AssetService extends Service implements IAssetService  {
 					.collect(Collectors.toList())
 				);
 	}
+	
+	
 	
 	@Override
 	public OptionChain getOptionChainFor(String symbol) {

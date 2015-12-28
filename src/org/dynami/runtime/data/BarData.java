@@ -31,7 +31,7 @@ public class BarData implements IData {
 	private final int BUFFER_SIZE = 1024;
 	private List<Bar> data = new ArrayList<>(BUFFER_SIZE);
 	private double max = 0., min = Double.MAX_VALUE;
-	private long compression = TimeUnit.Minute.millis();
+	private long compression = 0L;
 	
 	public BarData(){};
 	
@@ -44,6 +44,30 @@ public class BarData implements IData {
 				.mapToDouble(Bar::getLow)
 				.min().orElse(Long.MAX_VALUE);
 		this.compression = compression;
+	}
+	
+	@Override
+	public boolean isCompressionRateSat(){
+		return compression > 0;
+	}
+	
+	@Override
+	public boolean setAutoCompressionRate(){
+		if(data.size() > 3 && !isCompressionRateSat()){
+			long distance = 0;
+			long tmp;
+			for(int i = 1; i < 4; i++){
+				tmp = data.get(i).time-data.get(i-1).time;
+				if(distance == 0) distance = tmp;
+				if(tmp < distance) distance = tmp;
+			}
+			compression = distance;
+			return true;
+		} else if(isCompressionRateSat()){
+			return true;
+		} else{
+			return false;
+		}
 	}
 	
 	public void append(final Bar bar){

@@ -19,7 +19,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.text.SimpleDateFormat;
-import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -43,6 +42,8 @@ import org.dynami.core.data.Bar;
 import org.dynami.core.data.IData;
 import org.dynami.core.data.IVolatilityEngine;
 import org.dynami.core.data.vola.CloseToCloseVolatilityEngine;
+import org.dynami.core.data.vola.ParkinsonVolatilityEngine;
+import org.dynami.core.data.vola.RogersSatchellVolatilityEngine;
 import org.dynami.core.utils.DTime;
 import org.dynami.core.utils.DUtils;
 import org.dynami.runtime.IDataHandler;
@@ -77,7 +78,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	// @Config.Param(name="Historical Volatility Engine",
 	// description="Historical volatility engine used to price options",
 	// values={CloseToCloseVolatilityEngine.class})
-	private Class<? extends IVolatilityEngine> volaEngineClass = CloseToCloseVolatilityEngine.class;
+	private Class<? extends IVolatilityEngine> volaEngineClass = RogersSatchellVolatilityEngine.class;
 
 	@Config.Param(name = "Symbol", description = "Main symbol")
 	private String symbol = "FTSEMIB";
@@ -121,6 +122,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	public boolean init(Config config) throws Exception {
 		volaEngine = volaEngineClass.newInstance();
 		historical = restorePriceData(dataFile);
+		historical.setAutoCompressionRate();
 		historical = historical.changeCompression(compressionRate);
 
 		msg.forceSync(true);
@@ -129,8 +131,6 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 		Asset.Future ftsemib = new Asset.Future(symbol, "IT00002344", "FTSE-MIB", futurePointValue, .05, marginRequired,
 				LastPriceEngine.MidPrice, market, dailyFormat.parse("31/12/2015").getTime(), 1L, "^FTSEMIB", () -> 1.); // risk
-																														// free
-																														// rate
 
 		msg.async(Topics.INSTRUMENT.topic, ftsemib);
 
@@ -306,28 +306,11 @@ public class TextFileDataHandler implements IService, IDataHandler {
 //			int daysLeft = 20;
 			int strikesFromAtm = (int) (Math.abs(spot - o.strike) / optionStep);
 
-			double factor = DUtils.YEAR_WORKDAYS;
-			if (compresssionRate >= IData.TimeUnit.Day.millis()) {
-				factor = (IData.TimeUnit.Day.millis() / compresssionRate) * DUtils.YEAR_WORKDAYS;
-			} else {
-				final Duration duration = Duration.between(market.getOpenTime(), market.getCloseTime());
-				final long milliSeconds = duration.getSeconds() * 1_000L;
-				factor = DUtils.YEAR_WORKDAYS * (milliSeconds / compresssionRate);
-			}
-
-			double vola = data.getVolatility(volaEngine, daysLeft) * Math.sqrt(factor);
+			double factor = volaEngine.annualizationFactor(compresssionRate, daysLeft, market);
+			double vola = data.getVolatility(volaEngine, daysLeft) * factor;
+			
 			if (vola > 0) {
-				// System.out.println("TextFileDataHandler.optionsPricing("+o.name+")
-				// "+vola);
-				// p = c – S + Xe – r(T-t)
-				// o.setVolatility(vola);
-				// double optBidPrice =
-				// AnalyticFormulas.blackScholesOptionValue(spot-((bidAskSpread/2)*strikesFromAtm),
-				// 0., vola, (double)daysLeft/DUtils.YEAR_DAYS, o.strike);
-				// double optAskPrice =
-				// AnalyticFormulas.blackScholesOptionValue(spot+((bidAskSpread/2)*strikesFromAtm),
-				// 0., vola, (double)daysLeft/DUtils.YEAR_DAYS, o.strike);
-
+//				System.out.println("TextFileDataHandler.optionsPricing() "+vola);
 				double optBidPrice = EuropeanBlackScholes.price(o.type, spot - ((bidAskSpread / 2) * strikesFromAtm),
 						o.strike, vola, (double) daysLeft / DUtils.YEAR_DAYS, 1.);
 				double optAskPrice = EuropeanBlackScholes.price(o.type, spot + ((bidAskSpread / 2) * strikesFromAtm),

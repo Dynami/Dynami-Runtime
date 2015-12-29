@@ -41,8 +41,6 @@ import org.dynami.core.config.Config;
 import org.dynami.core.data.Bar;
 import org.dynami.core.data.IData;
 import org.dynami.core.data.IVolatilityEngine;
-import org.dynami.core.data.vola.CloseToCloseVolatilityEngine;
-import org.dynami.core.data.vola.ParkinsonVolatilityEngine;
 import org.dynami.core.data.vola.RogersSatchellVolatilityEngine;
 import org.dynami.core.utils.DTime;
 import org.dynami.core.utils.DUtils;
@@ -97,6 +95,9 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 	@Config.Param(name = "Future Point Value", description = "Future point value", step = .1)
 	private Double futurePointValue = 5.;
+	
+	@Config.Param(name = "Riskfree Rate", description = "Risk free rate", step =.001, min=0., max=1.)
+	private Double riskfreeRate = .0014;
 
 	@Config.Param(name = "Enable option pricing", description = "Activate simulated option pricing")
 	private Boolean optionPricing = true;
@@ -106,7 +107,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 	@Config.Param(name = "Option Point Value", description = "Option point value", step = .1)
 	private Double optionPointValue = 2.5;
-
+	
 	@Config.Param(name = "Number of strikes", description = "Number of strikes above and below first price", max = 50, step = 1)
 	private Integer optionStrikes = 10;
 
@@ -202,15 +203,17 @@ public class TextFileDataHandler implements IService, IDataHandler {
 								price = currentBar.open;
 							} else if (i == HIGH) {
 								price = currentBar.high;
+								continue;
 							} else if (i == LOW) {
 								price = currentBar.low;
+								continue;
 							} else if (i == CLOSE) {
 								price = currentBar.close;
 							}
 							
 							if(optionPricing){
 								optionsPricing(msg, market, compressionRate, computedHistorical, volaEngine, options,
-										optionStep, currentBar.time, price, bidAskSpread);								
+										optionStep, currentBar.time, price, bidAskSpread, riskfreeRate);
 							}
 
 							Book.Orders bid = new Book.Orders(currentBar.symbol, currentBar.time, Side.BID, 1,
@@ -296,7 +299,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 	private static void optionsPricing(final IMsg msg, final Market market, final long compresssionRate,
 			final BarData data, final IVolatilityEngine volaEngine, final List<Option> options, final double optionStep,
-			final long time, final double spot, final double bidAskSpread) {
+			final long time, final double spot, final double bidAskSpread, final double riskfreeRate) {
 		for (Option o : options) {
 			if (o.isExpired(time)) {
 				options.remove(o);
@@ -304,17 +307,17 @@ public class TextFileDataHandler implements IService, IDataHandler {
 			}
 			int daysLeft = o.daysToExpiration(time);
 //			int daysLeft = 20;
-			int strikesFromAtm = (int) (Math.abs(spot - o.strike) / optionStep);
+			int strikesFromAtm = 1+(int)(Math.abs(spot - o.strike) / optionStep);
 
-			double factor = volaEngine.annualizationFactor(compresssionRate, daysLeft, market);
-			double vola = data.getVolatility(volaEngine, daysLeft) * factor;
+			final double factor = volaEngine.annualizationFactor(compresssionRate, daysLeft, market);
+			final double vola = data.getVolatility(volaEngine, daysLeft) * factor;
 			
 			if (vola > 0) {
-//				System.out.println("TextFileDataHandler.optionsPricing() "+vola);
-				double optBidPrice = EuropeanBlackScholes.price(o.type, spot - ((bidAskSpread / 2) * strikesFromAtm),
-						o.strike, vola, (double) daysLeft / DUtils.YEAR_DAYS, 1.);
-				double optAskPrice = EuropeanBlackScholes.price(o.type, spot + ((bidAskSpread / 2) * strikesFromAtm),
-						o.strike, vola, (double) daysLeft / DUtils.YEAR_DAYS, 1.);
+//				System.out.println("TextFileDataHandler.optionsPricing() "+spot);
+				double optBidPrice = EuropeanBlackScholes.price(o.type, (spot - ((bidAskSpread / 2) * strikesFromAtm)),
+						o.strike, vola, (double) daysLeft / DUtils.YEAR_DAYS, riskfreeRate);
+				double optAskPrice = EuropeanBlackScholes.price(o.type, (spot + ((bidAskSpread / 2) * strikesFromAtm)),
+						o.strike, vola, (double) daysLeft / DUtils.YEAR_DAYS, riskfreeRate);
 
 				Book.Orders bid = new Book.Orders(o.symbol, time, Side.BID, 1, optBidPrice, 100);
 				msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + o.symbol, bid);

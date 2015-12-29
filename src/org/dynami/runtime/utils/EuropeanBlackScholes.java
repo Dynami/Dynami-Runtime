@@ -6,8 +6,6 @@ import org.dynami.core.assets.Asset.Tradable;
 import org.dynami.core.data.IPricingEngine;
 import org.dynami.core.utils.DUtils;
 
-import static java.lang.Math.PI;
-
 public class EuropeanBlackScholes {
 	
 	public static final IPricingEngine OptionPricingEngine = new IPricingEngine() {

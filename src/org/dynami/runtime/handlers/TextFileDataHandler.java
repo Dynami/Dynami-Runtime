@@ -96,7 +96,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	@Config.Param(name = "Future Point Value", description = "Future point value", step = .1)
 	private Double futurePointValue = 5.;
 	
-	@Config.Param(name = "Riskfree Rate", description = "Risk free rate", step =.001, min=0., max=1.)
+	@Config.Param(name = "Riskfree Rate", description = "Risk free rate", step =.0001, min=0.000, max=1.)
 	private Double riskfreeRate = .0014;
 
 	@Config.Param(name = "Enable option pricing", description = "Activate simulated option pricing")
@@ -293,7 +293,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	}
 
 	@Override
-	public Status getStatus() {
+	public ServiceStatus getStatus() {
 		return null;
 	}
 

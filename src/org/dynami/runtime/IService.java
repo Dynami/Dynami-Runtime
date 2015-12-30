@@ -34,9 +34,9 @@ public interface IService {
 	
 	public boolean dispose();
 	
-	public Status getStatus();
+	public ServiceStatus getStatus();
 	
-	public static enum Status implements StateMachine.IState {
+	public static enum ServiceStatus implements StateMachine.IState {
 		Inactive, Running, Stopped, Disposed;
 		
 		private final List<StateMachine.IState> children = new ArrayList<>();

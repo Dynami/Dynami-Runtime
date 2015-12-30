@@ -22,6 +22,7 @@ import org.dynami.core.assets.Asset;
 import org.dynami.core.assets.Book;
 import org.dynami.core.services.ITraceService;
 import org.dynami.runtime.IServiceBus.ServiceStatus;
+import org.dynami.runtime.orders.OrderRequestWrapper;
 
 public enum Topics {
 	TRACE("a", ITraceService.Trace.class),
@@ -34,7 +35,8 @@ public enum Topics {
 	STRATEGY_ERRORS("g", String.class), 
 	STRATEGY_EVENT("h", Event.class),
 	SERVICE_STATUS("i", ServiceStatus.class),
-	EXECUTED_ORDER("j", Position.class)
+	EXECUTED_ORDER("j", Position.class),
+	ORDER_REQUESTS("o", OrderRequestWrapper.class)
 	;
 	
 	public final String topic;

@@ -46,7 +46,7 @@ public abstract class Service implements IService {
 	}
 
 	@Override
-	public Status getStatus() {
+	public ServiceStatus getStatus() {
 		return null;
 	}
 }

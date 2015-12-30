@@ -29,7 +29,7 @@ import org.dynami.core.orders.OrderRequest;
 import org.dynami.core.portfolio.ExecutedOrder;
 import org.dynami.core.services.IOrderService.IOrderHandler;
 import org.dynami.runtime.impl.Execution;
-import org.dynami.runtime.services.OrderService.Status;
+import org.dynami.core.services.IOrderService.Status;
 import org.dynami.runtime.topics.Topics;
 
 public class OrderRequestWrapper {
@@ -39,7 +39,6 @@ public class OrderRequestWrapper {
 	private final AtomicLong remainingQuantity = new AtomicLong(0);
 	private final List<PendingConditions> pendingConditions = new CopyOnWriteArrayList<>();
 	private final double price;
-	
 	
 	public OrderRequestWrapper(OrderRequest request, IOrderHandler handler){
 		this.request = request;
@@ -69,6 +68,10 @@ public class OrderRequestWrapper {
 		} else if(request.quantity<0){
 			Execution.Manager.msg().subscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
 		}
+	}
+	
+	public double getPrice() {
+		return price;
 	}
 	
 	public boolean cancelOrderRequest(){

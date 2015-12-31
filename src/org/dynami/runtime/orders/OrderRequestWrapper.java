@@ -56,17 +56,47 @@ public class OrderRequestWrapper {
 			price = request.price;
 		}
 		// check whether the order can be immediately executed or not
-		if(request.quantity > 0 && checkAskSide(trad.book.ask(), new AtomicBoolean())){
-			return;
-		}
-		if(request.quantity < 0 && checkBidSide(trad.book.ask(), new AtomicBoolean())){
-			return;
-		}
-		
-		if(request.quantity>0){
-			Execution.Manager.msg().subscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, askHandler);
-		} else if(request.quantity<0){
-			Execution.Manager.msg().subscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
+		if(request instanceof MarketOrder){
+			if(request.quantity > 0 ){
+				if(trad.book.ask().quantity >= getRemainingQuantity()){
+					Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, getRemainingQuantity(), request.time));
+					status.set(Status.Executed);
+					setRemainingQuantity(0);
+					handler.onOrderExecuted(Execution.Manager.dynami(), request);
+					if(request.conditions().size() > 0){
+						pendingConditions.add(new PendingConditions(request, pendingConditions));
+					}
+					Execution.Manager.msg().unsubscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, askHandler);
+				} else {
+					status.set(Status.PartiallyExecuted);
+					setRemainingQuantity(getRemainingQuantity()-trad.book.ask().quantity);
+					Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, trad.book.ask().quantity, request.time));
+					handler.onOrderPartiallyExecuted(Execution.Manager.dynami(), request);
+				}
+			}
+			if(request.quantity < 0){
+				if(trad.book.bid().quantity >= -getRemainingQuantity()){
+					Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, getRemainingQuantity(), request.time));
+					status.set(Status.Executed);
+					setRemainingQuantity(0);
+					handler.onOrderExecuted(Execution.Manager.dynami(), request);
+					if(request.conditions().size() > 0){
+						pendingConditions.add(new PendingConditions(request, pendingConditions));
+					}
+					Execution.Manager.msg().unsubscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
+				} else {
+					status.set(Status.PartiallyExecuted);
+					setRemainingQuantity(getRemainingQuantity()+trad.book.bid().quantity);
+					Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, -trad.book.bid().quantity, request.time));
+					handler.onOrderPartiallyExecuted(Execution.Manager.dynami(), request);
+				}
+			}
+		} else {
+			if(request.quantity>0){
+				Execution.Manager.msg().subscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, askHandler);
+			} else if(request.quantity<0){
+				Execution.Manager.msg().subscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
+			}
 		}
 	}
 	

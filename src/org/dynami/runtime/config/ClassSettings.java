@@ -19,18 +19,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ClassSettings {
-	private String settingsClassName;
 	private String name;
 	private String description;
 	private final Map<String, ParamSettings> params = new HashMap<>();
-	
-	public String getSettingsClassName() {
-		return settingsClassName;
-	}
-	public void setSettingsClassName(String settingsClassName) {
-		this.settingsClassName = settingsClassName;
-	}
-	
+		
 	public String getName() {
 		return name;
 	}

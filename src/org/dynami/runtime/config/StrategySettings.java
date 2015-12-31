@@ -19,37 +19,37 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class StrategySettings {
-	private String name;	
-	private String description;
-	private Map<String, ClassSettings> settings = new HashMap<>();
+	private ClassSettings strategy;
+	private Map<String, ClassSettings> stages = new HashMap<>();
 	
-	public String getName() {
-		return name;
+	public ClassSettings getStrategy() {
+		return strategy;
 	}
-	public void setName(String name) {
-		this.name = name;
+	
+	public void setStrategy(ClassSettings strategy) {
+		this.strategy = strategy;
 	}
-	public String getDescription() {
-		return description;
+	
+	public Map<String, ClassSettings> getStages() {
+		return stages;
 	}
-	public void setDescription(String description) {
-		this.description = description;
+	public void setSettings(Map<String, ClassSettings> stages) {
+		this.stages = stages;
 	}
-	public Map<String, ClassSettings> getSettings() {
-		return settings;
+	public ClassSettings getStageSettings(String clazz){
+		return stages.get(clazz);
 	}
-	public void setSettings(Map<String, ClassSettings> settings) {
-		this.settings = settings;
-	}
-	public ClassSettings getClassSettings(String clazz){
-		return settings.get(clazz);
+	
+	public Map<String, ClassSettings> getStagesSettings(){
+		return stages;
 	}
 	
 	public void merge(StrategySettings _settings){
-		settings.keySet().forEach(k->{
-			final ClassSettings _cs = _settings.getClassSettings(k);
+		strategy.merge(_settings.getStrategy());
+		stages.keySet().forEach(k->{
+			final ClassSettings _cs = _settings.getStageSettings(k);
 			if(_cs != null){
-				settings.get(k).merge(_cs);
+				stages.get(k).merge(_cs);
 			}
 		});
 	}

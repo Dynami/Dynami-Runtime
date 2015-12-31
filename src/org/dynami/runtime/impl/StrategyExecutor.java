@@ -65,7 +65,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 				lastExecutedEvent.set(exec(lastIncomingEvent.get()));
 			}
 		});
-		ClassSettings classSettings = this.strategySettings.getClassSettings(strategy.getClass().getName());
+		ClassSettings classSettings = this.strategySettings.getStrategy();
 		if(classSettings != null){
 			applySettings(strategy, classSettings);
 		}
@@ -115,7 +115,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 		technicalIndicators.clear();
 		try {
 			extractUserUtilities(stage, technicalIndicators);
-			ClassSettings classSettings = strategySettings.getClassSettings(stage.getClass().getName());
+			ClassSettings classSettings = strategySettings.getStageSettings(stage.getClass().getName());
 			if(classSettings != null){
 				applySettings(stage, classSettings);
 			}

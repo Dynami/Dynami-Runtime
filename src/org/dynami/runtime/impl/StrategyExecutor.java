@@ -46,7 +46,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 	private IServiceBus serviceBus;
 	private IStrategy strategy;
 	private StrategySettings strategySettings;
-	private IStage stage, previousStage;
+	private IStage stage, previousStage = null;
 
 	@Override
 	public void setup(IServiceBus serviceBus) {
@@ -72,19 +72,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 		this.strategy.onStrategyStart(this);
 	}
 	
-	private static void applySettings(final Object parent, final ClassSettings classSettings) throws Exception{
-		final Field[] fields = parent.getClass().getDeclaredFields();
-		for(Field f:fields){
-			if(f.isAnnotationPresent(Config.Param.class)){
-				Object value = classSettings.getParams().get(f.getName());
-				f.setAccessible(true);
-				f.set(parent, value);
-			}
-		}
-	}
-
 	private synchronized Event exec(Event event){
-
 		if(stage != previousStage){
 			runOncePerStage(stage);
 			previousStage = stage;
@@ -187,5 +175,16 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 	@Override
 	public IAssetService assets() {
 		return serviceBus.getService(IAssetService.class, IAssetService.ID);
+	}
+	
+	private static void applySettings(final Object parent, final ClassSettings classSettings) throws Exception{
+		final Field[] fields = parent.getClass().getDeclaredFields();
+		for(Field f:fields){
+			if(f.isAnnotationPresent(Config.Param.class)){
+				Object value = classSettings.getParams().get(f.getName()).getParamValue().getValue();
+				f.setAccessible(true);
+				f.set(parent, value);
+			}
+		}
 	}
 }

@@ -85,6 +85,22 @@ public enum Execution implements IExecutionManager {
 		}
 		return false;
 	}
+	
+	@Override
+	public boolean select(StrategySettings settings, String strategyJarPath) {
+		try {
+			if(stateMachine.canChangeState(State.Selected)){
+				this.strategySettings = settings;
+				this.strategyJarPath = strategyJarPath;
+				return stateMachine.changeState(State.Selected);
+			} else {
+				return false;
+			}
+		} catch (Exception e) {
+			msg().async(Topics.ERRORS.topic, e);
+			return false;
+		}
+	}
 
 	@Override
 	public boolean select(String strategyInstanceFilePath, String strategyJarPath) {

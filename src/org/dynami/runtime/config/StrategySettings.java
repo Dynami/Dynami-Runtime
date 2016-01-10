@@ -20,7 +20,9 @@ import java.util.Map;
 
 public class StrategySettings {
 	private ClassSettings strategy;
-	private Map<String, ClassSettings> stages = new HashMap<>();
+	private Map<String, ClassSettings> stages = new HashMap<String, ClassSettings>();
+	
+	public StrategySettings() {}
 	
 	public ClassSettings getStrategy() {
 		return strategy;
@@ -36,6 +38,11 @@ public class StrategySettings {
 	public void setSettings(Map<String, ClassSettings> stages) {
 		this.stages = stages;
 	}
+	
+	public void setStages(Map<String, ClassSettings> stages) {
+		this.stages = stages;
+	}
+	
 	public ClassSettings getStageSettings(String clazz){
 		return stages.get(clazz);
 	}

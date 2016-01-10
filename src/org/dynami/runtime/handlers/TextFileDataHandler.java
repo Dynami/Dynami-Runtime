@@ -91,7 +91,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private File dataFile = new File("./resources/FTSEMIB_1M_2015_10_02.txt");
 
 	@Config.Param(name = "Time compression", description = "Compression used for time frame", min = 1, max = 100, step = 1, type = Config.Type.TimeFrame)
-	private Long compressionRate = IData.TimeUnit.Day.millis() * 1;
+	private Long compressionRate = IData.TimeUnit.Hour.millis() * 1;
 
 	@Config.Param(name = "Future Point Value", description = "Future point value", step = .1)
 	private Double futurePointValue = 5.;
@@ -129,9 +129,11 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		msg.forceSync(true);
 
 		Market market = new Market("IDEM", "IDEM", Locale.ITALY, LocalTime.of(9, 0, 0), LocalTime.of(17, 25, 0));
+		
+		Asset.Index index = new Asset.Index(Asset.Family.Index, "^FTSEMIB", "IT0000000001", "FTSEMIB Index", 1, .01, market);
 
 		Asset.Future ftsemib = new Asset.Future(symbol, "IT00002344", "FTSE-MIB", futurePointValue, .05, marginRequired,
-				LastPriceEngine.MidPrice, market, dailyFormat.parse("31/12/2015").getTime(), 1L, "^FTSEMIB", () -> 1.); // risk
+				LastPriceEngine.MidPrice, market, dailyFormat.parse("31/12/2015").getTime(), 1L, index, () -> 1.); // risk
 
 		msg.async(Topics.INSTRUMENT.topic, ftsemib);
 
@@ -153,14 +155,14 @@ public class TextFileDataHandler implements IService, IDataHandler {
 						String upperOptionSymbol = DUtils.getOptionSymbol(symbol, type, expirations[j], upperStrike);
 						String lowerOptionSymbol = DUtils.getOptionSymbol(symbol, type, expirations[j], lowerStrike);
 
-						Option opt0 = createOption(market, "MIBO", symbol,
+						Option opt0 = createOption(market, "MIBO", ftsemib,
 								DUtils.getOptionName(symbol, type, expirations[j], upperStrike), upperOptionSymbol,
 								type, optionPointValue.doubleValue(), marginRequired.doubleValue(), expirations[j],
 								upperStrike);
 						msg.async(Topics.INSTRUMENT.topic, opt0);
 						options.add(opt0);
 
-						Option opt1 = createOption(market, "MIBO", symbol,
+						Option opt1 = createOption(market, "MIBO", ftsemib,
 								DUtils.getOptionName(symbol, type, expirations[j], lowerStrike), lowerOptionSymbol,
 								type, optionPointValue.doubleValue(), marginRequired.doubleValue(), expirations[j],
 								lowerStrike);
@@ -496,7 +498,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		this.optionPricing = optionPricing;
 	}
 
-	public static Asset.Option createOption(Market market, String prefix, String parent, String name, String isin,
+	public static Asset.Option createOption(Market market, String prefix, Asset parent, String name, String isin,
 			Option.Type type, double pointValue, double margin, long expire, double strike) throws Exception {
 
 		return new Asset.Option(DUtils.getOptionSymbol(prefix, type, expire, strike), isin,
@@ -504,9 +506,15 @@ public class TextFileDataHandler implements IService, IDataHandler {
 				market, expire, 1L, parent, () -> 0., // fake risk free rate
 														// provider
 				strike, type, Asset.Option.Exercise.European, new JQuantLibUtils.GreeksEngine(),
-				BSEurOptionsUtils.implVola);
+				BSEurOptionsUtils.implVola,
+				EuropeanBlackScholes.OptionPricingEngine);
 	}
 
+	/**
+	 * Get expiration dates (third friday of each month) in the date interval.
+	 * @param start
+	 * @param end
+	 */
 	private static long[] computeExpirationInPeriod(long start, long end) {
 		Calendar cal = Calendar.getInstance();
 		cal.setTimeInMillis(start);

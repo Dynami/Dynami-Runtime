@@ -46,10 +46,10 @@ public class PortfolioService extends Service implements IPortfolioService {
 	private final Map<String, OpenPosition> openPositions = new ConcurrentSkipListMap<>();
 	private final List<ClosedPosition> closedPositions = new ArrayList<>();
 	private double budget = 20_000.0;
-
 	private IMsg msg = Execution.Manager.msg();
 
 	private final AtomicReference<Double> realized = new AtomicReference<Double>(.0);
+	private final AtomicReference<Double> margination = new AtomicReference<Double>(.0);
 
 	@Override
 	public String id() {
@@ -77,6 +77,19 @@ public class PortfolioService extends Service implements IPortfolioService {
 					openPositions.remove(o.asset.symbol);
 				});
 			}
+			
+			final Asset.Tradable.Margin margin = new Asset.Tradable.Margin();
+			openPositions.values().forEach(o->{
+				Asset.Tradable.Margin m;
+				if(o.asset instanceof Asset.Option){
+					Asset.Option opt = (Asset.Option)o.asset;
+					m = opt.margination(opt.underlyingAsset.asTradable().lastPrice(), o.quantity);
+				} else {
+					m = o.asset.margination(o.asset.lastPrice(), o.quantity);					
+				}
+				margin.merge(m);
+			});
+			margination.set(margin.required());
 		});
 		
 		msg.subscribe(Topics.EXECUTED_ORDER.topic, (last, _msg)->{
@@ -192,6 +205,11 @@ public class PortfolioService extends Service implements IPortfolioService {
 	@Override
 	public double realized() {
 		return realized.get();
+	}
+	
+	@Override
+	public double requiredMargin() {
+		return margination.get();
 	}
 	
 	@Override

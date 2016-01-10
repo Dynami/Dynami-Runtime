@@ -19,9 +19,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ClassSettings {
+	private String type;
 	private String name;
 	private String description;
-	private final Map<String, ParamSettings> params = new HashMap<>();
+	private final Map<String, ParamSettings> params = new HashMap<String, ParamSettings>();
+	
+	public ClassSettings() {}
 		
 	public String getName() {
 		return name;
@@ -41,15 +44,25 @@ public class ClassSettings {
 		return params;
 	}
 	
+	public void setParams(Map<String, ParamSettings> params) {
+		this.params.putAll(params);
+	}
+	
+	
 	public void merge(ClassSettings _settings){
 		params.keySet().forEach(k->{
 			ParamSettings _ps = _settings.params.get(k);
 			if(_ps != null){
-				params.get(k).setValue(_ps.getValue());
+				params.get(k).setParamValue(_ps.getParamValue());
 			}
 		});
 	}
-//	public void setParams(Map<String, ParamSettings> params) {
-//		this.params = params;
-//	}
+	public String getType() {
+		return type;
+	}
+	
+	public void setType(String type) {
+		this.type = type;
+	}
+
 }

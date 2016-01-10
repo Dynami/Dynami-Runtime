@@ -34,6 +34,7 @@ import org.dynami.core.IStrategy;
 import org.dynami.core.config.Config;
 import org.dynami.runtime.config.ClassSettings;
 import org.dynami.runtime.config.ParamSettings;
+import org.dynami.runtime.config.ParamValue;
 import org.dynami.runtime.config.StrategySettings;
 import org.dynami.runtime.models.StrategyComponents;
 
@@ -94,6 +95,7 @@ public class StrategyClassLoader extends URLClassLoader {
 			String description = settings.description();
 			classSettings.setName(name);
 			classSettings.setDescription(description);
+			classSettings.setType(clazz.getName());
 		}
 		Field[] fields = clazz.getDeclaredFields();
 		Object obj = clazz.newInstance();
@@ -102,10 +104,16 @@ public class StrategyClassLoader extends URLClassLoader {
 			if(p != null){
 				ParamSettings paramSettings = new ParamSettings();
 				f.setAccessible(true);
-				paramSettings.setType(f.getType());
-				paramSettings.setParam(p);
+//				paramSettings.setParamType(f.getType());
+				paramSettings.setParamName(p.name());
 				paramSettings.setFieldName(f.getName());
-				paramSettings.setValue(f.get(obj));
+				paramSettings.setParamValue(new ParamValue(f.getType(), f.get(obj)));
+				paramSettings.setDescription(p.description());
+				paramSettings.setMax(p.max());
+				paramSettings.setMin(p.min());
+				paramSettings.setStep(p.step());
+				paramSettings.setInnerType(p.type());
+				paramSettings.setPossibileValues(p.values());
 				classSettings.getParams().put(f.getName(), paramSettings);
 			}
 		}

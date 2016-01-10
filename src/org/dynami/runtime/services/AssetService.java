@@ -103,7 +103,7 @@ public class AssetService extends Service implements IAssetService  {
 				registry.values()
 					.stream()
 					.filter((asset)->asset instanceof Asset.DerivativeInstr)
-					.filter((asset)-> ((Asset.DerivativeInstr)asset).parentSymbol.equals(symbol))
+					.filter((asset)-> ((Asset.DerivativeInstr)asset).underlyingAsset.symbol.equals(symbol))
 					.collect(Collectors.toList())
 				);
 	}
@@ -117,7 +117,7 @@ public class AssetService extends Service implements IAssetService  {
 			Asset.Option[] options = registry.values()
 					.stream()
 					.filter((asset)->asset instanceof Asset.Option)
-					.filter((asset)-> ((Asset.DerivativeInstr)asset).parentSymbol.equals(symbol))
+					.filter((asset)-> ((Asset.DerivativeInstr)asset).underlyingAsset.symbol.equals(symbol))
 					.map(i->(Asset.Option)i)
 					.sorted((o1, o2)->Double.compare(o1.strike, o2.strike))
 					.toArray(Asset.Option[]::new);

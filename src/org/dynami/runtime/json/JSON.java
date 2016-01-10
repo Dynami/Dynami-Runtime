@@ -20,6 +20,9 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.lang.reflect.Type;
 import java.util.Date;
+import java.util.Map;
+
+import org.dynami.runtime.config.ParamValue;
 
 import flexjson.JSONDeserializer;
 import flexjson.JSONSerializer;
@@ -45,11 +48,49 @@ public enum JSON {
 	}
 	
 	public <T> T deserialize(File file, Class<T> clazz) throws Exception {
-		JSONDeserializer<T> deserializer =  new JSONDeserializer<>();
+		final JSONDeserializer<T> deserializer =  new JSONDeserializer<>();
 		deserializer.use(Date.class, new DateTransformer(DATE_FORMAT));
 		deserializer.use(Class.class, new JSON.ClassTrasformer());
+		deserializer.use(ParamValue.class, new JSON.ParamValueFactory());
 		try(FileReader reader = new FileReader(file)){
 			return deserializer.deserialize(reader, clazz);
+		}
+	}
+	
+	static class ParamValueFactory implements ObjectFactory {
+	    public Object instantiate(ObjectBinder context, Object value, Type targetType, Class targetClass) {
+	    	ParamValue p = new ParamValue();
+	    	Map<String, ?> values = (Map<String, ?>)value;
+	    	String t = (String)values.get("type");
+	    	Object v = values.get("value");
+	    	p.setType(getTypeByString(t));
+	    	p.setValue(context.bind(v, p.getType()));
+	        return p;
+	    }
+	}
+	
+	private static Class<?> getTypeByString(final String className){
+		try {
+			if("int".equals(className)){
+				return int.class;
+			} else if("short".equals(className)){
+				return short.class;
+			} else if("float".equals(className)){
+				return float.class;
+			} else if("long".equals(className)){
+				return long.class;
+			} else if("double".equals(className)){
+				return double.class;
+			} else if("boolean".equals(className)){
+				return boolean.class;
+			} else if("byte".equals(className)){
+				return byte.class;
+			} else {
+				return Class.forName(className);
+			}
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+			return null;
 		}
 	}
 	
@@ -57,12 +98,7 @@ public enum JSON {
 	static class ClassTrasformer extends AbstractTransformer implements ObjectFactory {
 		@Override
 		public Object instantiate(ObjectBinder context, Object value, Type targetType, Class targetClass) {
-			try {
-				return Class.forName((String)value);
-			} catch (ClassNotFoundException e) {
-				e.printStackTrace();
-				return null;
-			}
+			return getTypeByString((String)value);
 		}
 		
 		@Override

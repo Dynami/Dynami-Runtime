@@ -15,40 +15,102 @@
  */
 package org.dynami.runtime.config;
 
-import org.dynami.core.config.Config;
+import org.dynami.core.config.Config.Type;
 
 public class ParamSettings {
-	private Config.Param param;
-	private Class<?> type;
+	private String paramName;
+//	private Class<?> paramType;
 	private String fieldName;
-	private Object value;
+	private ParamValue paramValue;
+	private String description;
+	private double min = 0;
+	private double max =  Double.MAX_VALUE;
+	private double step = 0.1;
+	private Type innerType = Type.JavaType;
+	private String[] possibileValues = {};
+	
+	public ParamSettings() {}
 	
 	public String getName(){
-		return !param.name().equals("")?param.name():fieldName;
+		return (paramName != null && !paramName.equals(""))?paramName:fieldName;
 	}
-	
+
+	public String getParamName() {
+		return paramName;
+	}
+
+	public void setParamName(String paramName) {
+		this.paramName = paramName;
+	}
+
 	public String getFieldName() {
 		return fieldName;
 	}
+
 	public void setFieldName(String fieldName) {
 		this.fieldName = fieldName;
 	}
-	public Object getValue() {
-		return value;
+
+	public ParamValue getParamValue() {
+		return paramValue;
 	}
-	public void setValue(Object value) {
-		this.value = value;
+
+	public void setParamValue(ParamValue paramValue) {
+		this.paramValue = paramValue;
 	}
-	public Config.Param getParam() {
-		return param;
+
+	public String getDescription() {
+		return description;
 	}
-	public void setParam(Config.Param param) {
-		this.param = param;
+
+	public void setDescription(String description) {
+		this.description = description;
 	}
-	public Class<?> getType() {
-		return type;
+
+	public double getMin() {
+		return min;
 	}
-	public void setType(Class<?> type) {
-		this.type = type;
+
+	public void setMin(double min) {
+		this.min = min;
 	}
+
+	public double getMax() {
+		return max;
+	}
+
+	public void setMax(double max) {
+		this.max = max;
+	}
+
+	public double getStep() {
+		return step;
+	}
+
+	public void setStep(double step) {
+		this.step = step;
+	}
+
+	public Type getInnerType() {
+		return innerType;
+	}
+
+	public void setInnerType(Type innerType) {
+		this.innerType = innerType;
+	}
+
+	public String[] getPossibileValues() {
+		return possibileValues;
+	}
+
+	public void setPossibileValues(String[] possibileValues) {
+		this.possibileValues = possibileValues;
+	}
+
+//	public Class<?> getParamType() {
+//		return paramType;
+//	}
+//	public void setParamType(Class<?> paramType) {
+//		this.paramType = paramType;
+//	}
 }

@@ -22,6 +22,7 @@ import org.dynami.core.IDynami;
 import org.dynami.core.bus.IMsg;
 import org.dynami.core.config.Config;
 import org.dynami.core.utils.StateMachine;
+import org.dynami.runtime.config.StrategySettings;
 import org.dynami.runtime.impl.StrategyExecutor;
 import org.dynami.runtime.topics.Topics;
 
@@ -60,6 +61,14 @@ public interface IExecutionManager {
 	 * @return true if all is ok, false otherwise.
 	 */
 	public boolean select(String strategyInstanceFilePath, String strategyJarPath);
+	
+	/**
+	 * 
+	 * @param settings
+	 * @param strategyJarPath
+	 * @return
+	 */
+	public boolean select(StrategySettings settings, String strategyJarPath);
 
 	/**
 	 * Dynamically load user strategy

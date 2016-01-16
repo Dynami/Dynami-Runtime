@@ -100,7 +100,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private Double riskfreeRate = .0014;
 
 	@Config.Param(name = "Enable option pricing", description = "Activate simulated option pricing")
-	private Boolean optionPricing = true;
+	private Boolean optionPricing = false;
 
 	@Config.Param(name = "Option Strike Step", description = "Number of points between one option strike and another", step = .1)
 	private Double optionStep = 250.;

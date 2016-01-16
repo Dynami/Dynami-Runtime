@@ -16,8 +16,11 @@
 package org.dynami.runtime.impl;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -32,6 +35,7 @@ import org.dynami.core.services.IDataService;
 import org.dynami.core.services.IOrderService;
 import org.dynami.core.services.IPortfolioService;
 import org.dynami.core.services.ITraceService;
+import org.dynami.core.utils.DUtils;
 import org.dynami.runtime.IServiceBus;
 import org.dynami.runtime.IStrategyExecutor;
 import org.dynami.runtime.config.ClassSettings;
@@ -43,6 +47,12 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 	private final AtomicReference<Event> lastIncomingEvent = new AtomicReference<Event>(null);
 	private final AtomicReference<Event> lastExecutedEvent = new AtomicReference<Event>(null);
 	private final AtomicBoolean endStrategy = new AtomicBoolean(false);
+	private final Map<Class<? extends IStage>, Event.Type[]> eventFilters = new ConcurrentHashMap<>();
+	private final Map<Class<? extends IStage>, String[]> symbolFilters = new ConcurrentHashMap<>();
+
+//	private Event.Type[] eventFilter = {};
+//	private String[] symbolFilter = {};
+	
 	private IServiceBus serviceBus;
 	private IStrategy strategy;
 	private StrategySettings strategySettings;
@@ -78,7 +88,18 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 			previousStage = stage;
 		}
 		try {
-			stage.process(this, event);	
+			final Event.Type[] eventFilter = eventFilters.get(stage.getClass());
+			final String[] symbolFilter = symbolFilters.get(stage.getClass());
+			
+			if( event.isOneOfThese(eventFilter)){
+				if(symbolFilter.length > 0 ){
+					if(DUtils.in(event.symbol, symbolFilter)){
+						stage.process(this, event);
+					}
+				} else {
+					stage.process(this, event);
+				}
+			}
 		} catch (Exception e) {
 			Execution.Manager.msg().async(Topics.STRATEGY_ERRORS.topic, e);
 		}
@@ -102,7 +123,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 	private void runOncePerStage(IStage stage) {
 		technicalIndicators.clear();
 		try {
-			extractUserUtilities(stage, technicalIndicators);
+			extractUserUtilities(stage, technicalIndicators, eventFilters, symbolFilters);
 			ClassSettings classSettings = strategySettings.getStageSettings(stage.getClass().getName());
 			if(classSettings != null){
 				applySettings(stage, classSettings);
@@ -113,14 +134,31 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 		}
 	}
 
-	private static void extractUserUtilities(Object stage, List<ITechnicalIndicator> techIndicators) throws Exception {
-		Field[] fields = stage.getClass().getDeclaredFields();
+	private static void extractUserUtilities(final IStage stage, 
+			final List<ITechnicalIndicator> techIndicators, 
+			final Map<Class<? extends IStage>, Event.Type[]> eventFilters, 
+			final Map<Class<? extends IStage>, String[]> symbolFilters) throws Exception {
+		
+		final Class<? extends IStage> clazz= stage.getClass();
+		final Field[] fields = clazz.getDeclaredFields();
 		Object obj = null;
 		for(final Field f:fields){
 			f.setAccessible(true);
 			obj = f.get(stage);
 			if(obj != null && obj instanceof ITechnicalIndicator ){
 				techIndicators.add( (ITechnicalIndicator)obj);
+			}
+		}
+		
+		Method[] methods = clazz.getDeclaredMethods();
+		for(final Method m : methods){
+			IStage.Filter f = m.getAnnotation(IStage.Filter.class);
+			if(f != null){
+				eventFilters.put(clazz, f.event());
+				symbolFilters.put(clazz, f.symbol());
+			} else {
+				eventFilters.put(clazz, Event.Type.values());
+				symbolFilters.put(clazz, new String[0]);
 			}
 		}
 	}

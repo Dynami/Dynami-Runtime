@@ -91,11 +91,11 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private File dataFile = new File("./resources/FTSEMIB_1M_2015_10_02.txt");
 
 	@Config.Param(name = "Time compression", description = "Compression used for time frame", min = 1, max = 100, step = 1, type = Config.Type.TimeFrame)
-	private Long compressionRate = IData.TimeUnit.Hour.millis() * 1;
+	private Long compressionRate = IData.TimeUnit.Day.millis() * 1;
 
 	@Config.Param(name = "Future Point Value", description = "Future point value", step = .1)
 	private Double futurePointValue = 5.;
-	
+
 	@Config.Param(name = "Riskfree Rate", description = "Risk free rate", step =.0001, min=0.000, max=1.)
 	private Double riskfreeRate = .0014;
 
@@ -107,7 +107,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 	@Config.Param(name = "Option Point Value", description = "Option point value", step = .1)
 	private Double optionPointValue = 2.5;
-	
+
 	@Config.Param(name = "Number of strikes", description = "Number of strikes above and below first price", max = 50, step = 1)
 	private Integer optionStrikes = 10;
 
@@ -129,7 +129,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		msg.forceSync(true);
 
 		Market market = new Market("IDEM", "IDEM", Locale.ITALY, LocalTime.of(9, 0, 0), LocalTime.of(17, 25, 0));
-		
+
 		Asset.Index index = new Asset.Index(Asset.Family.Index, "^FTSEMIB", "IT0000000001", "FTSEMIB Index", 1, .01, market);
 
 		Asset.Future ftsemib = new Asset.Future(symbol, "IT00002344", "FTSE-MIB", futurePointValue, .05, marginRequired,
@@ -212,7 +212,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 							} else if (i == CLOSE) {
 								price = currentBar.close;
 							}
-							
+
 							if(optionPricing){
 								optionsPricing(msg, market, compressionRate, computedHistorical, volaEngine, options,
 										optionStep, currentBar.time, price, bidAskSpread, riskfreeRate);
@@ -313,7 +313,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 			final double factor = volaEngine.annualizationFactor(compresssionRate, daysLeft, market);
 			final double vola = data.getVolatility(volaEngine, daysLeft) * factor;
-			
+
 			if (vola > 0) {
 //				System.out.println("TextFileDataHandler.optionsPricing() "+spot);
 				double optBidPrice = EuropeanBlackScholes.price(o.type, (spot - ((bidAskSpread / 2) * strikesFromAtm)),

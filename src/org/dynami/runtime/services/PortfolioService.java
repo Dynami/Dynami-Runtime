@@ -58,7 +58,7 @@ public class PortfolioService extends Service implements IPortfolioService {
 
 	@Override
 	public boolean init(Config config) throws Exception {
-		
+
 		msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, msg)->{
 			Event e =(Event)msg;
 			if(e.is(Event.Type.OnDayClose)){
@@ -67,8 +67,8 @@ public class PortfolioService extends Service implements IPortfolioService {
 					.stream()
 					.filter((o)-> o.asset instanceof Asset.ExpiringInstr)
 					.filter(o -> ((Asset.ExpiringInstr)o.asset).isExpired(closingTime)) // in this way the expired option in the date are checked
-					.collect(Collectors.toList()); 
-				
+					.collect(Collectors.toList());
+
 				to_remove.forEach(o->{
 					ClosedPosition closed = new ClosedPosition(o, o.asset.lastPrice(), closingTime);
 					closedPositions.add(closed);
@@ -77,7 +77,7 @@ public class PortfolioService extends Service implements IPortfolioService {
 					openPositions.remove(o.asset.symbol);
 				});
 			}
-			
+
 			final Asset.Tradable.Margin margin = new Asset.Tradable.Margin();
 			openPositions.values().forEach(o->{
 				Asset.Tradable.Margin m;
@@ -85,13 +85,13 @@ public class PortfolioService extends Service implements IPortfolioService {
 					Asset.Option opt = (Asset.Option)o.asset;
 					m = opt.margination(opt.underlyingAsset.asTradable().lastPrice(), o.quantity);
 				} else {
-					m = o.asset.margination(o.asset.lastPrice(), o.quantity);					
+					m = o.asset.margination(o.asset.lastPrice(), o.quantity);
 				}
 				margin.merge(m);
 			});
 			margination.set(margin.required());
 		});
-		
+
 		msg.subscribe(Topics.EXECUTED_ORDER.topic, (last, _msg)->{
 			ExecutedOrder p = (ExecutedOrder)_msg;
 			ordersLog.add(p);
@@ -118,7 +118,7 @@ public class PortfolioService extends Service implements IPortfolioService {
 				} else if( Math.abs(e.quantity + p.quantity) < Math.abs(e.quantity)){
 					// decremento la posizione
 					OpenPosition newPos = new OpenPosition(e.asset, e.quantity+p.quantity, e.entryPrice, p.time, p.time);
-					
+
 					ClosedPosition closed = new ClosedPosition(e.asset.family, e.asset.symbol, -p.quantity, e.entryPrice, e.entryTime, p.price, p.time, e.asset.pointValue);
 					closedPositions.add(closed);
 
@@ -130,13 +130,13 @@ public class PortfolioService extends Service implements IPortfolioService {
 		});
 		return true;
 	}
-	
+
 	@Override
 	public void setInitialBudget(double budget) {
 		assert budget < 1000 : "The minumum amount for budget is 1000";
 		this.budget = budget;
 	}
-	
+
 	@Override
 	public double getInitialBudget() {
 		return budget;
@@ -151,7 +151,7 @@ public class PortfolioService extends Service implements IPortfolioService {
 	public boolean isOnMarket() {
 		return openPositions.size() > 0;
 	}
-	
+
 	@Override
 	public boolean isFlat() {
 		return !isOnMarket();
@@ -161,7 +161,7 @@ public class PortfolioService extends Service implements IPortfolioService {
 	public boolean isOnMarket(String symbol) {
 		return openPositions.get(symbol) != null;
 	}
-	
+
 	@Override
 	public boolean isFlat(String symbol) {
 		return !isOnMarket(symbol);
@@ -206,12 +206,12 @@ public class PortfolioService extends Service implements IPortfolioService {
 	public double realized() {
 		return realized.get();
 	}
-	
+
 	@Override
 	public double requiredMargin() {
 		return margination.get();
 	}
-	
+
 	@Override
 	public double unrealized(String symbol){
 		final OpenPosition o = openPositions.get(symbol);

@@ -52,7 +52,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 
 //	private Event.Type[] eventFilter = {};
 //	private String[] symbolFilter = {};
-	
+
 	private IServiceBus serviceBus;
 	private IStrategy strategy;
 	private StrategySettings strategySettings;
@@ -81,7 +81,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 		}
 		this.strategy.onStrategyStart(this);
 	}
-	
+
 	private synchronized Event exec(Event event){
 		if(stage != previousStage){
 			runOncePerStage(stage);
@@ -90,8 +90,8 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 		try {
 			final Event.Type[] eventFilter = eventFilters.get(stage.getClass());
 			final String[] symbolFilter = symbolFilters.get(stage.getClass());
-			
-			if( event.isOneOfThese(eventFilter)){
+
+			if(event.isOneOfThese(eventFilter)){
 				if(symbolFilter.length > 0 ){
 					if(DUtils.in(event.symbol, symbolFilter)){
 						stage.process(this, event);
@@ -134,11 +134,11 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 		}
 	}
 
-	private static void extractUserUtilities(final IStage stage, 
-			final List<ITechnicalIndicator> techIndicators, 
-			final Map<Class<? extends IStage>, Event.Type[]> eventFilters, 
+	private static void extractUserUtilities(final IStage stage,
+			final List<ITechnicalIndicator> techIndicators,
+			final Map<Class<? extends IStage>, Event.Type[]> eventFilters,
 			final Map<Class<? extends IStage>, String[]> symbolFilters) throws Exception {
-		
+
 		final Class<? extends IStage> clazz= stage.getClass();
 		final Field[] fields = clazz.getDeclaredFields();
 		Object obj = null;
@@ -149,16 +149,18 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 				techIndicators.add( (ITechnicalIndicator)obj);
 			}
 		}
-		
+
 		Method[] methods = clazz.getDeclaredMethods();
 		for(final Method m : methods){
 			IStage.Filter f = m.getAnnotation(IStage.Filter.class);
-			if(f != null){
-				eventFilters.put(clazz, f.event());
-				symbolFilters.put(clazz, f.symbol());
-			} else {
-				eventFilters.put(clazz, Event.Type.values());
-				symbolFilters.put(clazz, new String[0]);
+			if(m.getName().equals("process")){
+				if(f != null){
+					eventFilters.put(clazz, f.event());
+					symbolFilters.put(clazz, f.symbol());
+				} else {
+					eventFilters.put(clazz, Event.Type.values());
+					symbolFilters.put(clazz, new String[0]);
+				}
 			}
 		}
 	}
@@ -214,7 +216,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 	public IAssetService assets() {
 		return serviceBus.getService(IAssetService.class, IAssetService.ID);
 	}
-	
+
 	private static void applySettings(final Object parent, final ClassSettings classSettings) throws Exception{
 		final Field[] fields = parent.getClass().getDeclaredFields();
 		for(Field f:fields){

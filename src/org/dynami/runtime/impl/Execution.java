@@ -40,7 +40,7 @@ public enum Execution implements IExecutionManager {
 	private String strategyJarPath;
 	private IDynami dynami = (IDynami)engine;
 
-	
+
 	private final StateMachine stateMachine = new StateMachine(()->{
 		State.NonActive.addChildren(State.Selected, State.Initialized);
 		State.Selected.addChildren(State.Initialized);
@@ -77,7 +77,7 @@ public enum Execution implements IExecutionManager {
 
 	@Override
 	public boolean init(Config config) {
-		
+
 		if(stateMachine.canChangeState(State.Initialized)){
 			if(serviceBus.initServices(config)){
 				return stateMachine.changeState(State.Initialized);
@@ -85,7 +85,7 @@ public enum Execution implements IExecutionManager {
 		}
 		return false;
 	}
-	
+
 	@Override
 	public boolean select(StrategySettings settings, String strategyJarPath) {
 		try {
@@ -172,10 +172,16 @@ public enum Execution implements IExecutionManager {
 			return false;
 		}
 	}
-	
+
 	@Override
-	public void dispose() {
-		serviceBus.disposeServices();
+	public boolean dispose() {
+		if(stateMachine.canChangeState(State.NonActive)){
+			serviceBus.disposeServices();
+			stateMachine.changeState(State.NonActive);
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	@Override

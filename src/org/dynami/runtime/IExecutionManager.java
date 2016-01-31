@@ -37,7 +37,7 @@ public interface IExecutionManager {
 	 * @return {@link IDynami}
 	 */
 	public IDynami dynami();
-	
+
 	/**
 	 * Set a custom IStrategyExecutor engine, instead of the default one {@link StrategyExecutor}.
 	 * If you want using a different one, invoke this method before invoking IExecutionManager::load();
@@ -61,9 +61,9 @@ public interface IExecutionManager {
 	 * @return true if all is ok, false otherwise.
 	 */
 	public boolean select(String strategyInstanceFilePath, String strategyJarPath);
-	
+
 	/**
-	 * 
+	 *
 	 * @param settings
 	 * @param strategyJarPath
 	 * @return
@@ -140,8 +140,8 @@ public interface IExecutionManager {
 
 
 	public boolean canMoveTo(State state);
-	
-	public void dispose();
+
+	public boolean dispose();
 
 	/**
 	 * Retrieves the service bus, which handles Dynami's services life cycle.

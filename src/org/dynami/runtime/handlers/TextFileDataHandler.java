@@ -56,6 +56,7 @@ import org.dynami.runtime.utils.LastPriceEngine;
 
 @Config.Settings(name = "TextFileDataHandler settings", description = "bla bla bla")
 public class TextFileDataHandler implements IService, IDataHandler {
+	private final AtomicInteger idx = new AtomicInteger(0);
 	private static final SimpleDateFormat intradaySecondsFormat = new SimpleDateFormat(
 			TRACK_RECORD.INTRADAY_SECONDS_DATE_FORMAT);
 	private static final SimpleDateFormat intradayMinutesFormat = new SimpleDateFormat(
@@ -120,6 +121,13 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	}
 
 	@Override
+	public void reset() {
+//		System.out.println("TextFileDataHandler.reset() "+this);
+		idx.set(0);
+		computedHistorical = new BarData();
+	}
+
+	@Override
 	public boolean init(Config config) throws Exception {
 		volaEngine = volaEngineClass.newInstance();
 		historical = restorePriceData(dataFile);
@@ -174,8 +182,8 @@ public class TextFileDataHandler implements IService, IDataHandler {
 			}
 		}
 
+
 		thread = new Thread(new Runnable() {
-			private final AtomicInteger idx = new AtomicInteger(0);
 
 			@Override
 			public void run() {
@@ -249,7 +257,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 							}
 
 							try {
-								TimeUnit.MILLISECONDS.sleep(clockFrequency.longValue() / 4);
+								TimeUnit.MILLISECONDS.sleep(clockFrequency.longValue() / 2);
 							} catch (InterruptedException e) {
 							}
 						}
@@ -283,6 +291,11 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	public boolean resume() {
 		isRunning.set(true);
 		return true;
+	}
+
+	@Override
+	public boolean isDisposed() {
+		return !isStarted.get();
 	}
 
 	@Override

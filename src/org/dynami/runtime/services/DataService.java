@@ -32,8 +32,8 @@ import org.dynami.runtime.topics.Topics;
 
 public class DataService extends Service implements IDataService  {
 	private final Map<String, BarData> data = new ConcurrentSkipListMap<>();
-
 	private final IMsg msg = Execution.Manager.msg();
+	private boolean initialized = false;
 
 	@Override
 	public String id() {
@@ -42,14 +42,18 @@ public class DataService extends Service implements IDataService  {
 
 	@Override
 	public boolean init(Config config) throws Exception {
-		msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, _msg)->{
-			Event e = (Event)_msg;
-			if(e.is(Event.Type.OnBarClose)){
-				data.putIfAbsent(e.bar.symbol, new BarData());
-				data.get(e.bar.symbol).append(e.bar);
-			}
-		});
-		return super.init(config);
+		data.clear();
+		if(!initialized){
+			msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, _msg)->{
+				Event e = (Event)_msg;
+				if(e.is(Event.Type.OnBarClose)){
+					data.putIfAbsent(e.bar.symbol, new BarData());
+					data.get(e.bar.symbol).append(e.bar);
+				}
+			});
+			initialized = true;
+		}
+		return initialized;
 	}
 
 	@Override

@@ -48,6 +48,7 @@ public class PortfolioService extends Service implements IPortfolioService {
 	private double budget = 20_000.0;
 	private IMsg msg = Execution.Manager.msg();
 
+	private boolean initialized = false;
 	private final AtomicReference<Double> realized = new AtomicReference<Double>(.0);
 	private final AtomicReference<Double> margination = new AtomicReference<Double>(.0);
 
@@ -58,77 +59,84 @@ public class PortfolioService extends Service implements IPortfolioService {
 
 	@Override
 	public boolean init(Config config) throws Exception {
+		ordersLog.clear();
+		openPositions.clear();
+		closedPositions.clear();
+		realized.set(0.);
+		margination.set(0.);
+		if(!initialized){
+			msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, msg)->{
+				Event e =(Event)msg;
+				if(e.is(Event.Type.OnDayClose)){
+					final long closingTime = DTime.Clock.getTime()+1;
+					final List<OpenPosition> to_remove = openPositions.values()
+							.stream()
+							.filter((o)-> o.asset instanceof Asset.ExpiringInstr)
+							.filter(o -> ((Asset.ExpiringInstr)o.asset).isExpired(closingTime)) // in this way the expired option in the date are checked
+							.collect(Collectors.toList());
 
-		msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, msg)->{
-			Event e =(Event)msg;
-			if(e.is(Event.Type.OnDayClose)){
-				final long closingTime = DTime.Clock.getTime()+1;
-				final List<OpenPosition> to_remove = openPositions.values()
-					.stream()
-					.filter((o)-> o.asset instanceof Asset.ExpiringInstr)
-					.filter(o -> ((Asset.ExpiringInstr)o.asset).isExpired(closingTime)) // in this way the expired option in the date are checked
-					.collect(Collectors.toList());
+					to_remove.forEach(o->{
+						ClosedPosition closed = new ClosedPosition(o, o.asset.lastPrice(), closingTime);
+						closedPositions.add(closed);
 
-				to_remove.forEach(o->{
-					ClosedPosition closed = new ClosedPosition(o, o.asset.lastPrice(), closingTime);
-					closedPositions.add(closed);
+						realized.set(realized.get()+closed.roi());
+						openPositions.remove(o.asset.symbol);
+					});
+				}
 
-					realized.set(realized.get()+closed.roi());
-					openPositions.remove(o.asset.symbol);
+				final Asset.Tradable.Margin margin = new Asset.Tradable.Margin();
+				openPositions.values().forEach(o->{
+					Asset.Tradable.Margin m;
+					if(o.asset instanceof Asset.Option){
+						Asset.Option opt = (Asset.Option)o.asset;
+						m = opt.margination(opt.underlyingAsset.asTradable().lastPrice(), o.quantity);
+					} else {
+						m = o.asset.margination(o.asset.lastPrice(), o.quantity);
+					}
+					margin.merge(m);
 				});
-			}
-
-			final Asset.Tradable.Margin margin = new Asset.Tradable.Margin();
-			openPositions.values().forEach(o->{
-				Asset.Tradable.Margin m;
-				if(o.asset instanceof Asset.Option){
-					Asset.Option opt = (Asset.Option)o.asset;
-					m = opt.margination(opt.underlyingAsset.asTradable().lastPrice(), o.quantity);
-				} else {
-					m = o.asset.margination(o.asset.lastPrice(), o.quantity);
-				}
-				margin.merge(m);
+				margination.set(margin.required());
 			});
-			margination.set(margin.required());
-		});
 
-		msg.subscribe(Topics.EXECUTED_ORDER.topic, (last, _msg)->{
-			ExecutedOrder p = (ExecutedOrder)_msg;
-			ordersLog.add(p);
+			msg.subscribe(Topics.EXECUTED_ORDER.topic, (last, _msg)->{
+				ExecutedOrder p = (ExecutedOrder)_msg;
+				ordersLog.add(p);
 
-			OpenPosition e = openPositions.get(p.symbol);
-			if(e == null){
-				Asset.Tradable trad = (Asset.Tradable)Execution.Manager.dynami().assets().getBySymbol(p.symbol);
-				openPositions.put(p.symbol, new OpenPosition(trad, p.quantity, p.price, p.time, p.time));
-			} else {
-				// chiudo la posizione
-				if(e.quantity + p.quantity == 0){
-					ClosedPosition closed = new ClosedPosition(e, p.price, p.time);
-					closedPositions.add(closed);
+				OpenPosition e = openPositions.get(p.symbol);
+				if(e == null){
+					Asset.Tradable trad = (Asset.Tradable)Execution.Manager.dynami().assets().getBySymbol(p.symbol);
+					openPositions.put(p.symbol, new OpenPosition(trad, p.quantity, p.price, p.time, p.time));
+				} else {
+					// chiudo la posizione
+					if(e.quantity + p.quantity == 0){
+						ClosedPosition closed = new ClosedPosition(e, p.price, p.time);
+						closedPositions.add(closed);
 
-					realized.set(realized.get()+closed.roi());
-					openPositions.remove(p.symbol);
-					System.out.printf("PortfolioService.realized( Close %5.2f)\n", realized.get());
-				} else if( abs(e.quantity + p.quantity) > abs(e.quantity)){
-					// incremento la posizione e medio il prezzo
-					double newPrice = (e.entryPrice*e.quantity+p.price*p.quantity)/(e.quantity+p.quantity);
-					OpenPosition newPos = new OpenPosition(e.asset, e.quantity+p.quantity, newPrice, p.time, p.time);
-					openPositions.put(newPos.asset.symbol, newPos);
-					System.out.println("PortfolioService.init() Increment "+newPos);
-				} else if( Math.abs(e.quantity + p.quantity) < Math.abs(e.quantity)){
-					// decremento la posizione
-					OpenPosition newPos = new OpenPosition(e.asset, e.quantity+p.quantity, e.entryPrice, p.time, p.time);
+						realized.set(realized.get()+closed.roi());
+						openPositions.remove(p.symbol);
+						System.out.printf("PortfolioService.realized( Close %5.2f)\n", realized.get());
+					} else if( abs(e.quantity + p.quantity) > abs(e.quantity)){
+						// incremento la posizione e medio il prezzo
+						double newPrice = (e.entryPrice*e.quantity+p.price*p.quantity)/(e.quantity+p.quantity);
+						OpenPosition newPos = new OpenPosition(e.asset, e.quantity+p.quantity, newPrice, p.time, p.time);
+						openPositions.put(newPos.asset.symbol, newPos);
+						System.out.println("PortfolioService.init() Increment "+newPos);
+					} else if( Math.abs(e.quantity + p.quantity) < Math.abs(e.quantity)){
+						// decremento la posizione
+						OpenPosition newPos = new OpenPosition(e.asset, e.quantity+p.quantity, e.entryPrice, p.time, p.time);
 
-					ClosedPosition closed = new ClosedPosition(e.asset.family, e.asset.symbol, -p.quantity, e.entryPrice, e.entryTime, p.price, p.time, e.asset.pointValue);
-					closedPositions.add(closed);
+						ClosedPosition closed = new ClosedPosition(e.asset.family, e.asset.symbol, -p.quantity, e.entryPrice, e.entryTime, p.price, p.time, e.asset.pointValue);
+						closedPositions.add(closed);
 
-					realized.set(realized.get()+closed.roi());
-					openPositions.put(newPos.asset.symbol, newPos);
-					System.out.printf("PortfolioService.realized( Close %5.2f) "+newPos+"\n", realized.get());
+						realized.set(realized.get()+closed.roi());
+						openPositions.put(newPos.asset.symbol, newPos);
+						System.out.printf("PortfolioService.realized( Close %5.2f) "+newPos+"\n", realized.get());
+					}
 				}
-			}
-		});
-		return true;
+			});
+			initialized = true;
+		}
+		return initialized;
 	}
 
 	@Override

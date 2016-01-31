@@ -37,8 +37,8 @@ import org.dynami.runtime.topics.Topics;
 public class AssetService extends Service implements IAssetService  {
 	private final Map<String, Asset> registry = new ConcurrentSkipListMap<>();
 	private final Map<String, OptionChain> chains = new ConcurrentSkipListMap<>();
-
 	private final IMsg msg = Execution.Manager.msg();
+	private boolean initialized = false;
 
 	@Override
 	public String id() {
@@ -47,40 +47,46 @@ public class AssetService extends Service implements IAssetService  {
 
 	@Override
 	public boolean init(Config config) throws Exception {
-		msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, _msg)->{
-			Event e =(Event)_msg;
-			if(e.is(Event.Type.OnDayClose)){
-				final long currentTime = DTime.Clock.getTime()+1;
-				final List<Asset> to_remove = registry.values()
-					.stream()
-					.filter(a->a instanceof Asset.ExpiringInstr)
-					.filter(a->((Asset.ExpiringInstr)a).isExpired(currentTime))
-					.collect(Collectors.toList());
-				
-				to_remove.forEach(a->{
-					Asset.Tradable tra = registry.remove(a.symbol).asTradable();
+		registry.clear();
+		chains.clear();
+
+		if(!initialized){
+			msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, _msg)->{
+				Event e =(Event)_msg;
+				if(e.is(Event.Type.OnDayClose)){
+					final long currentTime = DTime.Clock.getTime()+1;
+					final List<Asset> to_remove = registry.values()
+							.stream()
+							.filter(a->a instanceof Asset.ExpiringInstr)
+							.filter(a->((Asset.ExpiringInstr)a).isExpired(currentTime))
+							.collect(Collectors.toList());
+
+					to_remove.forEach(a->{
+						Asset.Tradable tra = registry.remove(a.symbol).asTradable();
 						msg.unsubscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+tra.symbol, tra.book.askBookOrdersHandler);
 						msg.unsubscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+tra.symbol, tra.book.bidBookOrdersHandler);
 					});
 
-				chains.values().forEach(OptionChain::cleanExpired);
-			}
-		});
+					chains.values().forEach(OptionChain::cleanExpired);
+				}
+			});
 
-		/**
-		 * When new instruments are put into Instruments Registry a link between data and orders book is created
-		 */
-		msg.subscribe(Topics.INSTRUMENT.topic, (last, _msg)->{
-			final Asset instr = (Asset)_msg;
-			registry.put(instr.symbol, instr);
-			if(instr instanceof Asset.Tradable){
-				msg.subscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+instr.symbol, ((Asset.Tradable)instr).book.askBookOrdersHandler);
-				msg.subscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+instr.symbol, ((Asset.Tradable)instr).book.bidBookOrdersHandler);
-			}
-		});
-		return true;
+			/**
+			 * When new instruments are put into Instruments Registry a link between data and orders book is created
+			 */
+			msg.subscribe(Topics.INSTRUMENT.topic, (last, _msg)->{
+				final Asset instr = (Asset)_msg;
+				registry.put(instr.symbol, instr);
+				if(instr instanceof Asset.Tradable){
+					msg.subscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+instr.symbol, ((Asset.Tradable)instr).book.askBookOrdersHandler);
+					msg.subscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+instr.symbol, ((Asset.Tradable)instr).book.bidBookOrdersHandler);
+				}
+			});
+			initialized = true;
+		}
+		return initialized;
 	}
-	
+
 	@Override
 	public Market getMarketBySymbol(String symbol) {
 		Asset a = getBySymbol(symbol);
@@ -107,9 +113,9 @@ public class AssetService extends Service implements IAssetService  {
 					.collect(Collectors.toList())
 				);
 	}
-	
-	
-	
+
+
+
 	@Override
 	public OptionChain getOptionChainFor(String symbol) {
 		OptionChain chain = chains.get(symbol);
@@ -121,7 +127,7 @@ public class AssetService extends Service implements IAssetService  {
 					.map(i->(Asset.Option)i)
 					.sorted((o1, o2)->Double.compare(o1.strike, o2.strike))
 					.toArray(Asset.Option[]::new);
-			
+
 			chain = new OptionChain(symbol, options);
 			chains.put(symbol, chain);
 		}

@@ -23,22 +23,24 @@ import org.dynami.core.utils.StateMachine;
 
 public interface IService {
 	public String id();
-	
+
 	public boolean init(Config config) throws Exception;
-	
+
 	public boolean start();
-	
+
 	public boolean stop();
-	
+
 	public boolean resume();
-	
+
 	public boolean dispose();
-	
+
+	public boolean isDisposed();
+
 	public ServiceStatus getStatus();
-	
+
 	public static enum ServiceStatus implements StateMachine.IState {
 		Inactive, Running, Stopped, Disposed;
-		
+
 		private final List<StateMachine.IState> children = new ArrayList<>();
 		@Override
 		public List<StateMachine.IState> children() {

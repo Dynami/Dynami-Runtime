@@ -19,7 +19,7 @@ import org.dynami.core.config.Config;
 import org.dynami.runtime.IService;
 
 public abstract class Service implements IService {
-	
+
 	@Override
 	public boolean init(Config config) throws Exception {
 		return true;
@@ -43,6 +43,11 @@ public abstract class Service implements IService {
 	@Override
 	public boolean dispose() {
 		return true;
+	}
+
+	@Override
+	public boolean isDisposed() {
+		return false;
 	}
 
 	@Override

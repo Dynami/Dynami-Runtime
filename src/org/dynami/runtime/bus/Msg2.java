@@ -37,6 +37,7 @@ public enum Msg2 implements IMsg {
 	private final static int SIZE = 1024;
 	private final AtomicBoolean shutdown = new AtomicBoolean(false);
 	private final Map<String, TopicHandler> topics = new ConcurrentSkipListMap<>();
+
 	private final Thread internal = new Thread(new Runnable() {
 		@Override
 		public void run() {
@@ -56,7 +57,7 @@ public enum Msg2 implements IMsg {
 				// sleep execution for a nanosecond, otherwise sometimes raises unexpected NullPointerException
 				try {
 					TimeUnit.NANOSECONDS.sleep(1);
-//					Thread.sleep(0, 1); 
+//					Thread.sleep(0, 1);
 				} catch (InterruptedException e) {}
 			}
 		}
@@ -163,11 +164,14 @@ public enum Msg2 implements IMsg {
 		}
 	}
 
+	@Override
+	public void reset() {
+		topics.clear();
+	}
 
 	@Override
 	public boolean dispose() {
 		shutdown.set(true);
-		
 		return true;
 	}
 }

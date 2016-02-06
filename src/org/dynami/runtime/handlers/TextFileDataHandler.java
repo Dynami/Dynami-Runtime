@@ -184,7 +184,6 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 
 		thread = new Thread(new Runnable() {
-
 			@Override
 			public void run() {
 				int OPEN = 0, HIGH = 1, LOW = 2, CLOSE = 3;
@@ -304,6 +303,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		isStarted.set(false);
 		isRunning.set(false);
 		thread.interrupt();
+		thread = null;
 		return true;
 	}
 

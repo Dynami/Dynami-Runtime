@@ -43,7 +43,7 @@ import org.jquantlib.time.Date;
 import org.jquantlib.time.calendars.Target;
 
 public class JQuantLibUtils {
-	
+
 	public static final class OptionGreeks {
 		private final VanillaOption option;
 		private final Handle<YieldTermStructure> flatDividendTS;
@@ -55,31 +55,31 @@ public class JQuantLibUtils {
 		private final PricingEngine pricingEngine;
 
 		public OptionGreeks (
-				final Date settlement, 
-				final Date expire, 
-				final Type type, 
-				final double strike, 
-				final Handle<Quote> lastH, 
+				final Date settlement,
+				final Date expire,
+				final Type type,
+				final double strike,
+				final Handle<Quote> lastH,
 				final Handle<Quote> interestRateH,
 				final Handle<Quote> dividendYeldH,
 				final Handle<Quote> volaH) {
-			
+
 			org.jquantlib.time.Calendar calendar = new Target();
 			DayCounter dayCounter = new Actual365Fixed();
-			
+
 			flatDividendTS = new Handle<YieldTermStructure>(new FlatForward(settlement, dividendYeldH, dayCounter));
 			flatTermStructure = new Handle<YieldTermStructure>(new FlatForward(settlement, interestRateH, dayCounter));
 			flatVolTS = new Handle<BlackVolTermStructure>(new BlackConstantVol(settlement, calendar, volaH, dayCounter));
 			bsmProcess = new BlackScholesMertonProcess(lastH, flatDividendTS, flatTermStructure, flatVolTS);
-			
+
 			exercise = new EuropeanExercise(expire);
 			pricingEngine = new AnalyticEuropeanEngine(bsmProcess);
-			
+
 			final PlainVanillaPayoff payoff = new PlainVanillaPayoff(type.equals(Asset.Option.Type.CALL)?org.jquantlib.instruments.Option.Type.Call:org.jquantlib.instruments.Option.Type.Put, strike);
 			option = new VanillaOption(payoff, exercise);
 			option.setPricingEngine(pricingEngine);
 		}
-		
+
 		public double delta() {
 			return option.delta();
 		}
@@ -103,34 +103,34 @@ public class JQuantLibUtils {
 //		public double elasticity() {
 //			return option.elasticity();
 //		}
-//		
+//
 		public double theoreticalPrice() {
 			return option.NPV();
 		}
 	}
-	
+
 	public static final IPricingEngine pricingEngine = new IPricingEngine(){
 		@Override
 		public double compute(Tradable tradable, long time, double price, double vola, double riskfreeRate) {
 			if(tradable instanceof Asset.Option){
-				final Asset.Option opt = (Asset.Option)tradable;
-				final PlainVanillaPayoff payoff = new PlainVanillaPayoff(opt.type.equals(Asset.Option.Type.CALL)?org.jquantlib.instruments.Option.Type.Call:org.jquantlib.instruments.Option.Type.Put, opt.strike);
-				final PricingEngine engine ;
+//				final Asset.Option opt = (Asset.Option)tradable;
+//				final PlainVanillaPayoff payoff = new PlainVanillaPayoff(opt.type.equals(Asset.Option.Type.CALL)?org.jquantlib.instruments.Option.Type.Call:org.jquantlib.instruments.Option.Type.Put, opt.strike);
+//				final PricingEngine engine ;
 				return 0;
 			} else {
 				return price;
 			}
 		}
 	};
-	
+
 	public static final class GreeksEngine implements Greeks.Engine {
 		private Date settlement = null;
-		private OptionGreeks optionGreeks = null; 
+		private OptionGreeks optionGreeks = null;
 		private final Handle<Quote> volaH = new Handle<Quote>(new SimpleQuote());
 		private final Handle<Quote> dividendYeldH = new Handle<Quote>(new SimpleQuote(0.0));
 		private final Handle<Quote> interestRateH = new Handle<Quote>(new SimpleQuote(0.0));
 		private final Handle<Quote> lastH = new Handle<Quote>(new SimpleQuote());
-		
+
 		@Override
 		public void evaluate(Greeks output, String underlyingSymbol, long time, Type type, long expire, double strike, double vola, double interestRate) {
 			if(optionGreeks == null){
@@ -139,7 +139,7 @@ public class JQuantLibUtils {
 				expirationDate.addAssign(1);
 				optionGreeks = new OptionGreeks(settlement, expirationDate, type, strike, lastH, interestRateH, dividendYeldH, volaH);
 			}
-			
+
 			long currentSettlement = settlement.isoDate().getTime();
 			long currentTime = DTime.Clock.getTime();
 			int daysLeft = (int)((currentTime-currentSettlement)/DUtils.DAY_MILLIS);
@@ -149,11 +149,11 @@ public class JQuantLibUtils {
 			new org.jquantlib.Settings().setEvaluationDate(settlement);
 			if(vola > 0){
 				double underlyingPrice = Execution.Manager.dynami().assets().getBySymbol(underlyingSymbol).asTradable().lastPrice();
-				
+
 				((SimpleQuote)volaH.currentLink()).setValue(vola);
 				((SimpleQuote)interestRateH.currentLink()).setValue(interestRate);
 				((SimpleQuote)lastH.currentLink()).setValue(underlyingPrice);
-				
+
 				output.setGreeks(optionGreeks.delta(), optionGreeks.gamma(), optionGreeks.vega(), optionGreeks.theta(), optionGreeks.rho(), optionGreeks.theoreticalPrice());
 			}
 		}

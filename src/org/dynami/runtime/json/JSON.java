@@ -33,12 +33,12 @@ import flexjson.transformer.DateTransformer;
 
 public enum JSON {
 	Parser;
-	
+
 	private static final String DATE_FORMAT = "dd-MM-yyyy";
 //	private static final String TIME_FORMAT = "HH:mm:ss";
-	
+
 	private final JSONSerializer serializer = new JSONSerializer();
-	
+
 	public void serialize(File file, Object obj) throws Exception {
 		try(FileWriter writer = new FileWriter(file)){
 			serializer.prettyPrint(true);
@@ -46,7 +46,7 @@ public enum JSON {
 			writer.flush();
 		}
 	}
-	
+
 	public <T> T deserialize(File file, Class<T> clazz) throws Exception {
 		final JSONDeserializer<T> deserializer =  new JSONDeserializer<>();
 		deserializer.use(Date.class, new DateTransformer(DATE_FORMAT));
@@ -56,9 +56,10 @@ public enum JSON {
 			return deserializer.deserialize(reader, clazz);
 		}
 	}
-	
+
 	static class ParamValueFactory implements ObjectFactory {
-	    public Object instantiate(ObjectBinder context, Object value, Type targetType, Class targetClass) {
+	    @SuppressWarnings({ "rawtypes", "unchecked" })
+		public Object instantiate(ObjectBinder context, Object value, Type targetType, Class targetClass) {
 	    	ParamValue p = new ParamValue();
 	    	Map<String, ?> values = (Map<String, ?>)value;
 	    	String t = (String)values.get("type");
@@ -68,7 +69,7 @@ public enum JSON {
 	        return p;
 	    }
 	}
-	
+
 	private static Class<?> getTypeByString(final String className){
 		try {
 			if("int".equals(className)){
@@ -93,14 +94,14 @@ public enum JSON {
 			return null;
 		}
 	}
-	
+
 	@SuppressWarnings("rawtypes")
 	static class ClassTrasformer extends AbstractTransformer implements ObjectFactory {
 		@Override
 		public Object instantiate(ObjectBinder context, Object value, Type targetType, Class targetClass) {
 			return getTypeByString((String)value);
 		}
-		
+
 		@Override
 		public void transform(Object value) {
 			if( value == null ) {

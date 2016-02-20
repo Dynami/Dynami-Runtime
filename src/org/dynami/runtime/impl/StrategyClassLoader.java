@@ -44,30 +44,30 @@ public class StrategyClassLoader extends URLClassLoader {
 	private Class<IStrategy> strategy;
 	private List<Class<IStage>> stages = new ArrayList<>();
 	private StrategySettings strategySettings = new StrategySettings();
-	
+
 	public StrategyClassLoader(String path, ClassLoader parent) throws Exception {
 		super(new URL[] { new URL("file:" + path) }, parent);
 		this.jarFile = new JarFile(path);
 		loadDynamiComponents();
 	}
-	
+
 	public StrategyComponents getStrategyComponents(){
 		return new StrategyComponents(jarFile.getName(), strategy, Collections.unmodifiableList(stages), strategySettings);
 	}
-	
+
 	public Class<IStrategy> getStrategy() {
 		return strategy;
 	}
-	
+
 	public List<Class<IStage>> getStages() {
 		return stages;
 	}
-	
+
 	public Manifest getManifest() throws Exception{
 		URL url = findResource("META-INF/MANIFEST.MF");
 		if(url != null)
 			return new Manifest(url.openStream());
-		else 
+		else
 			return null;
 	}
 
@@ -86,7 +86,7 @@ public class StrategyClassLoader extends URLClassLoader {
 			return null;
 		}
 	}
-	
+
 	private static ClassSettings extractClassSettings(Class<?> clazz) throws Exception {
 		ClassSettings classSettings = new ClassSettings();
 		Config.Settings settings = clazz.getAnnotation(Config.Settings.class);
@@ -119,45 +119,37 @@ public class StrategyClassLoader extends URLClassLoader {
 		}
 		return classSettings;
 	}
-	
+
 	@SuppressWarnings("unchecked")
-	private void loadDynamiComponents() {
-		try {
-			JarEntry entry;
-			String className;
-			
-			int length;
-			for (Enumeration<JarEntry> _enum = jarFile.entries(); _enum.hasMoreElements();) {
-				entry = _enum.nextElement();
-				if (entry.getName().endsWith(".class")) {
-					className = entry.getName();
-					length = className.length();
-					className = className.substring(0, length - 6).replace('/','.');
-					try {
-						Class<?> c = loadClass(className);
-						Class<?>[] inter = c.getInterfaces();
-						for (Class<?> inf : inter) {
-							if (this.strategy == null && inf.equals(IStrategy.class) && !Modifier.isAbstract(c.getModifiers())) {
-								this.strategy = (Class<IStrategy>) c;
-								ClassSettings classSettings = extractClassSettings(c);
-								strategySettings.setStrategy(classSettings);
-							}
-							if(inf.equals(IStage.class) && !Modifier.isAbstract(c.getModifiers())){
-								stages.add((Class<IStage>)c);
-								ClassSettings classSettings = extractClassSettings(c);
-								strategySettings.getStagesSettings().put(c.getName(), classSettings);
-							}
-						}
-					} catch (Error er) {
-						er.printStackTrace();
+	private void loadDynamiComponents() throws Exception {
+		JarEntry entry;
+		String className;
+
+		int length;
+		for (Enumeration<JarEntry> _enum = jarFile.entries(); _enum.hasMoreElements();) {
+			entry = _enum.nextElement();
+			if (entry.getName().endsWith(".class")) {
+				className = entry.getName();
+				length = className.length();
+				className = className.substring(0, length - 6).replace('/','.');
+				Class<?> c = loadClass(className);
+				Class<?>[] inter = c.getInterfaces();
+				for (Class<?> inf : inter) {
+					if (this.strategy == null && inf.equals(IStrategy.class) && !Modifier.isAbstract(c.getModifiers())) {
+						this.strategy = (Class<IStrategy>) c;
+						ClassSettings classSettings = extractClassSettings(c);
+						strategySettings.setStrategy(classSettings);
+					}
+					if(inf.equals(IStage.class) && !Modifier.isAbstract(c.getModifiers())){
+						stages.add((Class<IStage>)c);
+						ClassSettings classSettings = extractClassSettings(c);
+						strategySettings.getStagesSettings().put(c.getName(), classSettings);
 					}
 				}
 			}
-		} catch(Exception e){
-			e.printStackTrace();
 		}
 	}
-		
+
 	/** Close references to opened zip files (via getResourceAsStream) */
 	public void close() {
 		try {

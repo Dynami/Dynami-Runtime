@@ -31,17 +31,18 @@ public enum Topics {
 	INSTRUMENT("d", Asset.class),
 	ASK_ORDERS_BOOK_PREFIX("ea/", Book.Orders.class),
 	BID_ORDERS_BOOK_PREFIX("eb/", Book.Orders.class),
-	ERRORS("f", String.class), 
-	STRATEGY_ERRORS("g", String.class), 
+	INTERNAL_ERRORS("f", Throwable.class),
+	STRATEGY_ERRORS("g", Throwable.class),
+	UI_ERRORS("p", Throwable.class),
 	STRATEGY_EVENT("h", Event.class),
 	SERVICE_STATUS("i", ServiceStatus.class),
 	EXECUTED_ORDER("j", Position.class),
-	ORDER_REQUESTS("o", OrderRequestWrapper.class)
+	ORDER_REQUESTS("o", OrderRequestWrapper.class),
 	;
-	
+
 	public final String topic;
 	public final Class<?> msgClass;
-	
+
 	private Topics(String topic, Class<?> msgClass){
 		this.topic = topic;
 		this.msgClass = msgClass;

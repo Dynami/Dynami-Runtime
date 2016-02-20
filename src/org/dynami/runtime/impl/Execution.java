@@ -69,7 +69,7 @@ public enum Execution implements IExecutionManager {
 			this.engine = engineClazz.newInstance();
 			this.dynami = (IDynami)engine;
 		} catch (Exception e) {
-			msg().async(Topics.ERRORS.topic, e);
+			msg().async(Topics.INTERNAL_ERRORS.topic, e);
 			return false;
 		}
 		return true;
@@ -97,7 +97,7 @@ public enum Execution implements IExecutionManager {
 				return false;
 			}
 		} catch (Exception e) {
-			msg().async(Topics.ERRORS.topic, e);
+			msg().async(Topics.INTERNAL_ERRORS.topic, e);
 			return false;
 		}
 	}
@@ -115,7 +115,7 @@ public enum Execution implements IExecutionManager {
 				return false;
 			}
 		} catch (Exception e) {
-			msg().async(Topics.ERRORS.topic, e);
+			msg().async(Topics.INTERNAL_ERRORS.topic, e);
 			return false;
 		}
 	}
@@ -132,7 +132,7 @@ public enum Execution implements IExecutionManager {
 				}
 				return stateMachine.changeState(State.Loaded);
 			} catch (Exception e) {
-				msg().async(Topics.ERRORS.topic, e);
+				msg().async(Topics.INTERNAL_ERRORS.topic, e);
 				return false;
 			}
 		} else {

@@ -39,7 +39,7 @@ public class Starter {
 			System.out.println(s);
 		});
 
-		Execution.Manager.msg().subscribe(Topics.ERRORS.topic, (last, _msg)->{
+		Execution.Manager.msg().subscribe(Topics.INTERNAL_ERRORS.topic, (last, _msg)->{
 			Throwable e = (Throwable)_msg;
 			e.printStackTrace();
 		});

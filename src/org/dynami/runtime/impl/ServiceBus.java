@@ -22,12 +22,12 @@ import org.dynami.runtime.IServiceBus;
 import org.dynami.runtime.utils.PrioritizedMap;
 
 public class ServiceBus implements IServiceBus {
-	
+
 	private final PrioritizedMap<String, IService> services = new PrioritizedMap<>();
-	
+
 	@Override
-	public void registerService(IService service, int priority) {
-		services.put(priority, service.id(), service);
+	public IService registerService(IService service, int priority) {
+		return services.put(priority, service.id(), service);
 	}
 
 	@SuppressWarnings("unchecked")

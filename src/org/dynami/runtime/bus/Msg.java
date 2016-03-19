@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Alessandro Atria
+ * Copyright 2014 Alessandro Atria - a.atria@gmail.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,14 @@
  */
 package org.dynami.runtime.bus;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.dynami.core.bus.IMsg;
 
@@ -36,203 +34,149 @@ import org.dynami.core.bus.IMsg;
  */
 public enum Msg implements IMsg {
 	Broker;
-	
-	public static final String WILDCARD = "*";
-	private final ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-	private final Map<String, List<HandlerWrapper>> subscriptions = new ConcurrentSkipListMap<>();
-	private final Map<String, List<HandlerWrapper>> wildcardSubscriptions = new ConcurrentSkipListMap<>();
-	private boolean forceSyncExecution = false;
-	
-	/* (non-Javadoc)
-	 * @see org.dynami.core.bus.IMessageService#subscribe(java.lang.String, org.dynami.core.bus.Msg.Handler)
-	 */
-	@Override
-	public void subscribe(String topic, IMsg.Handler handler){
-		if(topic.endsWith(WILDCARD)){
-			String wildcardTopic = topic.substring(0, topic.length()-1);
-			if(!wildcardSubscriptions.containsKey(wildcardTopic)){
-				wildcardSubscriptions.put(wildcardTopic, new CopyOnWriteArrayList<HandlerWrapper>());
-			}
-			wildcardSubscriptions.get(wildcardTopic).add(new HandlerWrapper(handler));
-//			System.out.println("Msg.subscribe("+wildcardTopic+")");
-		} else {
-			if(!subscriptions.containsKey(topic)){
-				subscriptions.put(topic, new CopyOnWriteArrayList<HandlerWrapper>());
-			}
-			subscriptions.get(topic).add(new HandlerWrapper(handler));
-		}
-	}
-	
-	/* (non-Javadoc)
-	 * @see org.dynami.core.bus.IMessageService#unsubscribe(java.lang.String, org.dynami.core.bus.Msg.Handler)
-	 */
-	@Override
-	public void unsubscribe(String topic, IMsg.Handler handler){
-		if(!subscriptions.containsKey(topic)){
-			return;
-		}
-		subscriptions.get(topic).remove(handler);
-	}
-	
-	/* (non-Javadoc)
-	 * @see org.dynami.core.bus.IMessageService#removeTopic(java.lang.String)
-	 */
-	@Override
-	public void removeTopic(String topic){
-		if(!subscriptions.containsKey(topic)){
-			return;
-		}
-		subscriptions.remove(topic);
-	}
-	
-	/* (non-Javadoc)
-	 * @see org.dynami.core.bus.IMessageService#async(java.lang.String, java.lang.Object)
-	 */
-	@Override
-	public boolean async(final String topic, final Object msg){
-		if(forceSyncExecution) return sync(topic, msg);
-		
-		final List<HandlerWrapper> wrappers = subscriptions.get(topic);
-		if(wrappers != null && !executor.isShutdown()){
-			MsgWrapper m = new MsgWrapper(msg);
-			for(final HandlerWrapper wrapper : wrappers){
-				executor.execute(()->{
-					wrapper.handler.update((wrapper.last.getAndSet(m.time) < m.time), m.msg);
-				});
-			}
-		} 
-		wildcardSubscriptions.keySet().stream().forEach((wildcardKey)->{
-			if(topic.startsWith(wildcardKey)){
-				final List<HandlerWrapper> wildcardWrappers = wildcardSubscriptions.get(wildcardKey);
-				if(wildcardWrappers != null && !executor.isShutdown()){
-					MsgWrapper m = new MsgWrapper(msg);
-					for(final HandlerWrapper wrapper : wildcardWrappers){
-						executor.execute(new Runnable() {
-							@Override
-							public void run() {
-								wrapper.handler.update((wrapper.last.getAndSet(m.time) < m.time), m.msg);
+	private boolean forceSync = false;
+	private final static int SIZE = 1024;
+	private final AtomicBoolean shutdown = new AtomicBoolean(false);
+	private final Map<String, TopicHandler> topics = new ConcurrentSkipListMap<>();
+
+	private final Thread internal = new Thread(new Runnable() {
+		@Override
+		public void run() {
+			while(!shutdown.get()){
+				topics.values().stream().forEach(th -> {
+					th.subscribers.stream().forEach((TopicSubscriber ts)->{
+						if(ts.cursor.get() < th.cursor.get()){
+							if(th.cursor.get() >= ts.cursor().get()+th._SIZE_){
+								ts.cursor.set(th.cursor.get()-th._SIZE_);
 							}
-						});
-					}
-				}
-			}
-		});
-		return true;
-	}
-	
-	/**
-	 * Sends asynchronous message to subscribers and execute the callback function when all subscribers processed message 
-	 * @param topic
-	 * @param msg
-	 * @param callback
-	 * @return true if topic exist, false otherwise
-	 */
-	public boolean async(final String topic, final Object msg, final Runnable callback){
-		if(forceSyncExecution){
-			sync(topic, msg);
-			callback.run();
-			return true;
-		}
-		
-		executor.submit(()->{
-			final List<HandlerWrapper> wrappers = subscriptions.get(topic);
-			List<Future<?>> results = new ArrayList<>();
-			if(wrappers != null && !executor.isShutdown()){
-				MsgWrapper m = new MsgWrapper(msg);
-				for(final HandlerWrapper wrapper : wrappers){
-					results.add(executor.submit(new Runnable() {
-						@Override
-						public void run() {
-							wrapper.handler.update((wrapper.last.getAndSet(m.time) < m.time), m.msg);
+							ts.handler.update(
+									th.cursor.get()-1== ts.cursor.get(),
+									th.buffer[ts.cursor.getAndIncrement()%th._SIZE_]);
 						}
-					}));
-				}
-			}
-			wildcardSubscriptions.keySet().stream().forEach((wildcardKey)->{
-				if(topic.startsWith(wildcardKey)){
-					final List<HandlerWrapper> wildcardWrappers = wildcardSubscriptions.get(wildcardKey);
-					if(wildcardWrappers != null && !executor.isShutdown()){
-						MsgWrapper m = new MsgWrapper(msg);
-						for(final HandlerWrapper wrapper : wildcardWrappers){
-							results.add(executor.submit(new Runnable() {
-								@Override
-								public void run() {
-									wrapper.handler.update((wrapper.last.getAndSet(m.time) < m.time), m.msg);
-								}
-							}));
-						}
-					}
-				}
-			});
-			
-			for(Future<?> r:results){
-				try { r.get(); } catch (Exception e) {}
-			}
-			callback.run();
-		});
-		return true;
-	}
-	
-	/* (non-Javadoc)
-	 * @see org.dynami.core.bus.IMessageService#sync(java.lang.String, java.lang.Object)
-	 */
-	@Override
-	public boolean sync(final String topic, final Object msg){
-		final List<HandlerWrapper> wrappers = subscriptions.get(topic);
-		if(wrappers != null){
-			for(final HandlerWrapper wrapper : wrappers){
-				wrapper.handler.update(true, msg);
+					});
+				});
+				try {
+					// sleep execution for a nanosecond, otherwise sometimes raises unexpected NullPointerException
+					TimeUnit.NANOSECONDS.sleep(1);
+				} catch (InterruptedException e) {}
 			}
 		}
-		wildcardSubscriptions.keySet().stream().forEach((wildcardKey)->{
-			if(topic.startsWith(wildcardKey)){
-				final List<HandlerWrapper> wildcardWrappers = wildcardSubscriptions.get(wildcardKey);
-				if(wildcardWrappers != null && !executor.isShutdown()){
-					MsgWrapper m = new MsgWrapper(msg);
-					for(final HandlerWrapper wrapper : wildcardWrappers){
-						wrapper.handler.update(true, m.msg);
-					}
-				}
-			}
-		});
-		return true;
+	}, "Msg.Broker.engine");
+
+	{
+		internal.start();
 	}
-	
-	
+
+	public void subscribe(String topic, IMsg.Handler handler){
+		topics.putIfAbsent(topic, new TopicHandler());
+		final TopicHandler h = topics.get(topic);
+		h.subscribe(new TopicSubscriber(handler, h.cursor.get()));
+	}
+
 	@Override
-	public void forceSync(boolean forceSync){
-		forceSyncExecution = forceSync;
+	public void unsubscribe(String topic, Handler handler) {
+		topics.get(topic).subscribers.remove(handler);
 	}
-	
-	private static class MsgWrapper {
-		public final long time;
-		public final Object msg;
-		public MsgWrapper(Object msg) {
-			this.time = System.nanoTime();
-			this.msg = msg;
-		}
+
+	@Override
+	public Set<String> getTopics(){
+		return topics.keySet();
 	}
-	
-	private static class HandlerWrapper {
-		public final IMsg.Handler handler;
-		public final AtomicLong last = new AtomicLong(System.nanoTime());
-		public HandlerWrapper(IMsg.Handler handler){
-			this.handler = handler;
+
+
+	@Override
+	public void unsubscribeAllFor(String topic) {
+		TopicHandler topicHandler = topics.get(topic);
+		if(topicHandler != null){
+			topicHandler.subscribers.clear();
 		}
 	}
 
-	public void unsubscribeAllFor(String topic) {
-		subscriptions.remove(topic);
+	@Override
+	public void removeTopic(String topic) {
+		topics.remove(topic);
 	}
-	
+
+	public boolean async(String topic, Object msg){
+		if(forceSync) return sync(topic, msg);
+		TopicHandler topicHandler = topics.get(topic);
+		if(topicHandler == null) return false;
+
+		topicHandler.buffer(msg);
+		return true;
+	}
+
+
+
+	@Override
+	public boolean sync(String topic, Object msg) {
+		TopicHandler handler = topics.get(topic);
+		if(handler == null) return false;
+
+		handler.subscribers.forEach(s->s.handler.update(true, msg));
+		return true;
+	}
+
+	@Override
+	public void forceSync(boolean forceSync) {
+		this.forceSync = forceSync;
+	}
+
+	private static class TopicSubscriber {
+		private final AtomicInteger cursor = new AtomicInteger(0);
+		public final IMsg.Handler handler;
+
+		public TopicSubscriber(IMsg.Handler handler, int _cursor) {
+			this.handler = handler;
+			this.cursor.set(_cursor);
+		}
+
+		public AtomicInteger cursor(){
+			return cursor;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if(obj instanceof IMsg.Handler){
+				return handler.equals(obj);
+			} else {
+				return super.equals(obj);
+			}
+		}
+	}
+
+	private static class TopicHandler {
+		private final List<TopicSubscriber> subscribers = new CopyOnWriteArrayList<>();
+		private final AtomicInteger cursor = new AtomicInteger(0);
+		public final int _SIZE_;
+		private final Object[] buffer;
+
+		public TopicHandler(int bufferSize){
+			this._SIZE_ = bufferSize;
+			buffer = new Object[bufferSize];
+		}
+
+		public TopicHandler() {
+			this(SIZE);
+		}
+
+		public void subscribe(TopicSubscriber subscriber){
+			subscribers.add(subscriber);
+		}
+
+		public void buffer(Object msg){
+			buffer[cursor.getAndIncrement()%_SIZE_] = msg;
+		}
+	}
+
+	@Override
+	public void reset() {
+		topics.clear();
+	}
+
 	@Override
 	public boolean dispose() {
-		try {
-			executor.awaitTermination(500L, TimeUnit.MILLISECONDS);
-			executor.shutdown();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
+		shutdown.set(true);
 		return true;
 	}
 }

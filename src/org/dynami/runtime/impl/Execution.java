@@ -26,7 +26,7 @@ import org.dynami.core.utils.StateMachine.ChangeStateListener;
 import org.dynami.runtime.IExecutionManager;
 import org.dynami.runtime.IServiceBus;
 import org.dynami.runtime.IStrategyExecutor;
-import org.dynami.runtime.bus.Msg2;
+import org.dynami.runtime.bus.Msg;
 import org.dynami.runtime.config.StrategySettings;
 import org.dynami.runtime.json.JSON;
 import org.dynami.runtime.topics.Topics;
@@ -40,9 +40,8 @@ public enum Execution implements IExecutionManager {
 	private String strategyJarPath;
 	private IDynami dynami = (IDynami)engine;
 
-
 	private final StateMachine stateMachine = new StateMachine(()->{
-		State.NonActive.addChildren(State.Selected, State.Initialized);
+		State.NonActive.addChildren(State.Selected);
 		State.Selected.addChildren(State.Initialized);
 		State.Initialized.addChildren(State.Loaded);
 		State.Loaded.addChildren(State.Running, State.Stopped);
@@ -59,7 +58,7 @@ public enum Execution implements IExecutionManager {
 
 	@Override
 	public IMsg msg() {
-		return Msg2.Broker;
+		return Msg.Broker;
 	}
 
 	@Override
@@ -165,8 +164,19 @@ public enum Execution implements IExecutionManager {
 	}
 
 	@Override
+	public boolean reset() {
+//		if(stateMachine.canChangeState(State.Reset)){
+//			return serviceBus.resetServices() && stateMachine.changeState(State.Reset);
+//		} else {
+//			return false;
+//		}
+		return true;
+	}
+
+	@Override
 	public boolean stop() {
 		if(stateMachine.canChangeState(State.Stopped) && serviceBus.stopServices()){
+			engine.dispose();
 			return stateMachine.changeState(State.Stopped);
 		} else {
 			return false;

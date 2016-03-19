@@ -49,8 +49,12 @@ public interface IExecutionManager {
 	 */
 	public boolean setStrategyExecutor(final Class<? extends IStrategyExecutor> engine);
 
-
-	public boolean init(Config config);
+	/**
+	 * Initialize execution manager with attribute contained interface
+	 * @param config
+	 * @return
+	 */
+	public <T extends Config> boolean init(T config);
 
 	/**
 	 * Load and parse Strategy instance file and set strategyJarBasePath for deploying the jar dynamically.
@@ -103,6 +107,12 @@ public interface IExecutionManager {
 	public boolean stop();
 
 	/**
+	 * Reset Dynami's internal attributes and make it ready for another execution
+	 * @return true if all went well, false otherwise
+	 */
+	public boolean reset();
+
+	/**
 	 * This function indicates whether the strategy has been loaded or not.
 	 * E.g. If the strategy is running, isLoaded() return true, because has been already loaded.
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
@@ -139,8 +149,17 @@ public interface IExecutionManager {
 	public void addStateListener(final StateMachine.ChangeStateListener listener);
 
 
+	/**
+	 * Check if execution manager can move toward state passed as parameter
+	 * @param state
+	 * @return true if change is allowed, false otherwise
+	 */
 	public boolean canMoveTo(State state);
 
+	/**
+	 * Releases Execution Manager resources and propagates dispose commands to services
+	 * @return
+	 */
 	public boolean dispose();
 
 	/**
@@ -149,6 +168,10 @@ public interface IExecutionManager {
 	 */
 	public IServiceBus getServiceBus();
 
+	/**
+	 * Retrieves IMsg broker implementation used in Dynami
+	 * @return
+	 */
 	public IMsg msg();
 
 	/**

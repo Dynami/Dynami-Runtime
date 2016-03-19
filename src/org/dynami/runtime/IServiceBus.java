@@ -35,7 +35,7 @@ import org.dynami.runtime.topics.Topics;
 public interface IServiceBus {
 	public static final String ID = "IServiceBus";
 
-	public void registerService(final IService service, final int priority) throws Exception;
+	public IService registerService(final IService service, final int priority) throws Exception;
 
 	public <T> T getService(final Class<T> service, final String ID);
 
@@ -82,6 +82,22 @@ public interface IServiceBus {
 		});
 		return isOk.get();
 	}
+
+	public default boolean resetServices(){
+		final AtomicBoolean isOk = new AtomicBoolean(true);
+		getServices().forEach(s->{
+			try {
+				if(!s.reset()){
+					isOk.set(false);
+					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "reset", "Unable to reset service "+s.id()));
+				}
+			} catch (Exception e) {
+				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "reset", DUtils.getErrorMessage(e)));
+			}
+		});
+		return isOk.get();
+	}
+
 
 	public default boolean stopServices(){
 		final AtomicBoolean isOk = new AtomicBoolean(true);

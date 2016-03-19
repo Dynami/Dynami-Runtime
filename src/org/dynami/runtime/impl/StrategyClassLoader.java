@@ -139,8 +139,8 @@ public class StrategyClassLoader extends URLClassLoader {
 						this.strategy = (Class<IStrategy>) c;
 						ClassSettings classSettings = extractClassSettings(c);
 						strategySettings.setStrategy(classSettings);
-					}
-					if(inf.equals(IStage.class) && !Modifier.isAbstract(c.getModifiers())){
+						break;
+					} else if(inf.equals(IStage.class) && !Modifier.isAbstract(c.getModifiers())){
 						stages.add((Class<IStage>)c);
 						ClassSettings classSettings = extractClassSettings(c);
 						strategySettings.getStagesSettings().put(c.getName(), classSettings);

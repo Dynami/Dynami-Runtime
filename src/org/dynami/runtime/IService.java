@@ -15,36 +15,32 @@
  */
 package org.dynami.runtime;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.dynami.core.config.Config;
-import org.dynami.core.utils.StateMachine;
 
 public interface IService {
 	public String id();
 
-	public boolean init(Config config) throws Exception;
+	public default <T extends Config> boolean init(T config) throws Exception {return true;};
 
-	public boolean start();
+	public default boolean start(){return true;};
 
-	public boolean stop();
+	public default boolean stop(){return true;};
 
-	public boolean resume();
+	public default boolean resume(){return true;};
 
-	public boolean dispose();
+	public default boolean dispose(){return true;};
 
-	public boolean isDisposed();
+	public default boolean reset(){return true;};
 
-	public ServiceStatus getStatus();
+	public default boolean isDisposed(){return true;};
 
-	public static enum ServiceStatus implements StateMachine.IState {
-		Inactive, Running, Stopped, Disposed;
-
-		private final List<StateMachine.IState> children = new ArrayList<>();
-		@Override
-		public List<StateMachine.IState> children() {
-			return children;
-		}
-	};
+//	public static enum ServiceStatus implements StateMachine.IState {
+//		Inactive, Running, Stopped, Disposed;
+//
+//		private final List<StateMachine.IState> children = new ArrayList<>();
+//		@Override
+//		public List<StateMachine.IState> children() {
+//			return children;
+//		}
+//	};
 }

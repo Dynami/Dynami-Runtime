@@ -51,7 +51,7 @@ public class Starter {
 					// set proper path, but let empty file for the moment
 					"-file", "../Dynami-Sample-Strategy/resources/myPersonalSettings.dynami",
 					// set proper path
-					"-strategy_lib", "../Dynami-Sample-Strategy/resources/dynami.sample.options.strategy_v1.jar"}); 
+					"-strategy_lib", "../Dynami-UI/resources/dynami.sample.strategy_v1.jar"});
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -60,7 +60,7 @@ public class Starter {
 	public void execute(String args[]) throws Exception {
 		Args arguments = new Args();
 		new JCommander(arguments, args);
-		
+
 		Execution.Manager.getServiceBus().registerDefaultServices();
 		Execution.Manager.getServiceBus().registerService(new TextFileDataHandler(), 100);
 
@@ -134,15 +134,15 @@ public class Starter {
 				//boolean executed = !Execution.Manager.isRunning();
 				IPortfolioService portfolio = Execution.Manager.dynami().portfolio();
 				System.out.println("Open positions:");
-				for(OpenPosition p:portfolio.getOpenPosition()){
+				for(OpenPosition p:portfolio.getOpenPositions()){
 					System.out.println(p);
 					System.out.println("-------------------------------------");
 				}
 				System.out.println();
-				
+
 				System.out.printf("Budget    : %6.2f\n", portfolio.getCurrentBudget());
-				System.out.printf("Realized  : %6.2f\n", portfolio.realized());
-				System.out.printf("Unrealized: %6.2f\n", portfolio.unrealized());
+				System.out.printf("Realized  : %6.2f\n", portfolio.realised());
+				System.out.printf("Unrealized: %6.2f\n", portfolio.unrealised());
 				//System.err.println(Commands.START_RESPONSE+cmd+"_"+((executed)?Commands.RESPONSE_EXECUTED:Commands.RESPONSE_NOT_EXECUTED)+Commands.END_RESPONSE);
 			} catch (Exception e) {
 				System.err.println(Commands.START_RESPONSE+cmd+"_"+Commands.RESPONSE_NOT_EXECUTED+Commands.END_RESPONSE);
@@ -153,17 +153,17 @@ public class Starter {
 				//boolean executed = !Execution.Manager.isRunning();
 				IPortfolioService portfolio = Execution.Manager.dynami().portfolio();
 				System.out.println("Open positions:");
-				for(OpenPosition p:portfolio.getOpenPosition()){
+				for(OpenPosition p:portfolio.getOpenPositions()){
 					System.out.println(p);
 					System.out.println("-------------------------------------");
 				}
 				System.out.println();
-				
+
 				System.out.printf("Budget    : %6.2f\n", portfolio.getCurrentBudget());
-				System.out.printf("Realized  : %6.2f\n", portfolio.realized());
-				System.out.printf("Unrealized: %6.2f\n", portfolio.unrealized());
+				System.out.printf("Realized  : %6.2f\n", portfolio.realised());
+				System.out.printf("Unrealized: %6.2f\n", portfolio.unrealised());
 				System.out.println();
-				for(ClosedPosition cp :portfolio.getClosedPosition()){
+				for(ClosedPosition cp :portfolio.getClosedPositions()){
 					System.out.println(cp);
 				}
 				//System.err.println(Commands.START_RESPONSE+cmd+"_"+((executed)?Commands.RESPONSE_EXECUTED:Commands.RESPONSE_NOT_EXECUTED)+Commands.END_RESPONSE);

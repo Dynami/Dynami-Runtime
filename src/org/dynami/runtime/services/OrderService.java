@@ -22,14 +22,16 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import org.dynami.core.config.Config;
+import org.dynami.core.orders.MarketOrder;
 import org.dynami.core.orders.OrderRequest;
 import org.dynami.core.services.IOrderService;
+import org.dynami.runtime.IService;
 import org.dynami.runtime.impl.Execution;
-import org.dynami.runtime.impl.Service;
 import org.dynami.runtime.orders.OrderRequestWrapper;
 import org.dynami.runtime.topics.Topics;
 
-public class OrderService extends Service implements IOrderService {
+public class OrderService implements IService, IOrderService {
 	private final AtomicBoolean shutdown = new AtomicBoolean(false);
 	private final List<OrderRequestWrapper> requests = new CopyOnWriteArrayList<>();
 
@@ -41,23 +43,38 @@ public class OrderService extends Service implements IOrderService {
 	@Override
 	public boolean dispose() {
 		shutdown.set(true);
-		return super.dispose();
+		return true;
 	}
 
 	@Override
 	public long send(OrderRequest order, IOrderHandler handler) {
 		System.out.println("OrderService.send() "+order.toString());
-		OrderRequestWrapper request = new OrderRequestWrapper(order, handler); 
+		OrderRequestWrapper request = new OrderRequestWrapper(order, handler);
 		requests.add(request);
 		Execution.Manager.msg().async(Topics.ORDER_REQUESTS.topic, request);
 		return order.id;
 	}
 
 	@Override
+	public long marketOrder(String symbol, long quantity, String note) {
+		return send(new MarketOrder(symbol, quantity, note));
+	}
+
+	@Override
+	public long marketOrder(String symbol, long quantity, String note, IOrderHandler handler) {
+		return send(new MarketOrder(symbol, quantity, note), handler);
+	}
+
+	@Override
+	public long marketOrder(String symbol, long quantity) {
+		return send(new MarketOrder(symbol, quantity));
+	}
+
+	@Override
 	public long send(OrderRequest order) {
 		return send(order, new IOrderHandler(){});
 	}
-	
+
 	private OrderRequestWrapper getOrderWrapperById(long id) {
 		Optional<OrderRequestWrapper> opt = requests.stream()
 				.filter(r->r.getRequest().id == id)
@@ -70,7 +87,7 @@ public class OrderService extends Service implements IOrderService {
 		OrderRequestWrapper w = getOrderWrapperById(id);
 		return (w != null)? w.getRequest():null;
 	}
-	
+
 	@Override
 	public Status getOrderStatus(long id) {
 		OrderRequestWrapper w = getOrderWrapperById(id);
@@ -94,7 +111,7 @@ public class OrderService extends Service implements IOrderService {
 			return false;
 		}
 	}
-	
+
 	public void removePendings(){
 		getPendingOrders().forEach(r->{
 			cancellOrder(r.id);

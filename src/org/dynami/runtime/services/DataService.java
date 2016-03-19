@@ -25,12 +25,12 @@ import org.dynami.core.config.Config;
 import org.dynami.core.data.IData;
 import org.dynami.core.services.IDataService;
 import org.dynami.core.utils.DTime;
+import org.dynami.runtime.IService;
 import org.dynami.runtime.data.BarData;
 import org.dynami.runtime.impl.Execution;
-import org.dynami.runtime.impl.Service;
 import org.dynami.runtime.topics.Topics;
 
-public class DataService extends Service implements IDataService  {
+public class DataService implements IService, IDataService  {
 	private final Map<String, BarData> data = new ConcurrentSkipListMap<>();
 	private final IMsg msg = Execution.Manager.msg();
 	private boolean initialized = false;
@@ -41,7 +41,20 @@ public class DataService extends Service implements IDataService  {
 	}
 
 	@Override
+	public boolean reset() {
+		data.clear();
+		return true;
+	}
+
+	@Override
+	public boolean dispose() {
+		System.out.println("DataService.dispose()");
+		return reset();
+	}
+
+	@Override
 	public boolean init(Config config) throws Exception {
+		System.out.println("DataService.init()");
 		data.clear();
 		if(!initialized){
 			msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, _msg)->{

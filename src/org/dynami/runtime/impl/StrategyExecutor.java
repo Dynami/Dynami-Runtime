@@ -29,6 +29,7 @@ import org.dynami.core.IDynami;
 import org.dynami.core.IStage;
 import org.dynami.core.IStrategy;
 import org.dynami.core.ITechnicalIndicator;
+import org.dynami.core.bus.IMsg.Handler;
 import org.dynami.core.config.Config;
 import org.dynami.core.services.IAssetService;
 import org.dynami.core.services.IDataService;
@@ -42,7 +43,7 @@ import org.dynami.runtime.config.ClassSettings;
 import org.dynami.runtime.config.StrategySettings;
 import org.dynami.runtime.topics.Topics;
 
-public class StrategyExecutor implements IStrategyExecutor, IDynami {
+public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 	private final List<ITechnicalIndicator> technicalIndicators = new ArrayList<>();
 	private final AtomicReference<Event> lastIncomingEvent = new AtomicReference<Event>(null);
 	private final AtomicReference<Event> lastExecutedEvent = new AtomicReference<Event>(null);
@@ -68,18 +69,21 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 		this.strategy = strategy;
 		this.stage = strategy.startsWith();
 		this.strategySettings = (strategySettings != null)?strategySettings:new StrategySettings();
-		Execution.Manager.msg().subscribe(Topics.STRATEGY_EVENT.topic, (last, msg)->{
-			if(last){
-				Event event = (Event)msg;
-				lastIncomingEvent.set(event);
-				lastExecutedEvent.set(exec(lastIncomingEvent.get()));
-			}
-		});
+		Execution.Manager.msg().subscribe(Topics.STRATEGY_EVENT.topic, this);
 		ClassSettings classSettings = this.strategySettings.getStrategy();
 		if(classSettings != null){
 			applySettings(strategy, classSettings);
 		}
 		this.strategy.onStrategyStart(this);
+	}
+
+	@Override
+	public void update(boolean last, Object msg) {
+		if(last){
+			Event event = (Event)msg;
+			lastIncomingEvent.set(event);
+			lastExecutedEvent.set(exec(lastIncomingEvent.get()));
+		}
 	}
 
 	private synchronized Event exec(Event event){
@@ -167,7 +171,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami {
 
 	@Override
 	public void dispose() {
-
+		Execution.Manager.msg().unsubscribe(Topics.STRATEGY_EVENT.topic, this);
 	}
 
 	@Override

@@ -39,17 +39,29 @@ public class OrderRequestWrapper {
 	private final AtomicLong remainingQuantity = new AtomicLong(0);
 	private final List<PendingConditions> pendingConditions = new CopyOnWriteArrayList<>();
 	private final double price;
-	
+
 	public OrderRequestWrapper(OrderRequest request, IOrderHandler handler){
 		this.request = request;
 		this.handler = handler;
 		remainingQuantity.set(request.quantity);
-		
+
 		final Asset.Tradable trad = Execution.Manager.dynami().assets().getBySymbol(request.symbol).asTradable();
 		if(request instanceof MarketOrder){
 			if(request.quantity>0){
+				if(trad.book.ask() == null ){
+					status.set(Status.Rejected);
+					handler.onOrderRejected(Execution.Manager.dynami(), request);
+					this.price = 0;
+					return;
+				}
 				this.price = trad.book.ask().price;
 			} else {
+				if(trad.book.bid() == null ){
+					status.set(Status.Rejected);
+					handler.onOrderRejected(Execution.Manager.dynami(), request);
+					this.price = 0;
+					return;
+				}
 				this.price = trad.book.bid().price;
 			}
 		} else {
@@ -99,15 +111,15 @@ public class OrderRequestWrapper {
 			}
 		}
 	}
-	
+
 	public double getPrice() {
 		return price;
 	}
-	
+
 	public boolean cancelOrderRequest(){
-		if(status.equals(Status.Pending) 
+		if(status.equals(Status.Pending)
 				|| status.equals(Status.PartiallyExecuted)){
-			
+
 			Execution.Manager.msg().unsubscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, askHandler);
 			Execution.Manager.msg().unsubscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
 			setRemainingQuantity(0);
@@ -116,7 +128,7 @@ public class OrderRequestWrapper {
 		}
 		return false;
 	}
-	
+
 	private boolean checkBidSide(final Book.Orders orders, final AtomicBoolean invalidateMe){
 		if(price <= orders.price && orders.quantity >= -getRemainingQuantity()){
 			Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, getRemainingQuantity(), request.time));
@@ -137,7 +149,7 @@ public class OrderRequestWrapper {
 		}
 		return false;
 	}
-	
+
 	private boolean checkAskSide(final Book.Orders orders, final AtomicBoolean invalidateMe){
 		if(price >= orders.price && orders.quantity >= getRemainingQuantity()){
 			Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, getRemainingQuantity(), request.time));
@@ -158,7 +170,7 @@ public class OrderRequestWrapper {
 		}
 		return false;
 	}
-	
+
 	/**
 	 * Check whether the buy price is lower or equals than ask price
 	 */
@@ -187,9 +199,9 @@ public class OrderRequestWrapper {
 			}
 		};
 	};
-	
+
 	/**
-	 * Check whether the sell price is greater or equals than bid price 
+	 * Check whether the sell price is greater or equals than bid price
 	 */
 	private final IMsg.Handler bidHandler = new IMsg.Handler(){
 		AtomicBoolean invalidateMe = new AtomicBoolean(false);
@@ -219,23 +231,23 @@ public class OrderRequestWrapper {
 			}
 		};
 	};
-	
+
 	public OrderRequest getRequest() {
 		return request;
 	}
-	
+
 	public Status getStatus() {
 		return status.get();
 	}
-	
+
 	public void setStatus(Status status){
 		this.status.set(status);
 	}
-	
+
 	public long getRemainingQuantity() {
 		return remainingQuantity.get();
 	}
-	
+
 	private void setRemainingQuantity(long quantity){
 		remainingQuantity.set(quantity);
 	}

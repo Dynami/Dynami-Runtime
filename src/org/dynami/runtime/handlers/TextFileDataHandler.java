@@ -63,7 +63,6 @@ public class TextFileDataHandler implements IService, IDataHandler {
 			TRACK_RECORD.INTRADAY_MINUTES_DATE_FORMAT);
 	private static final SimpleDateFormat dailyFormat = new SimpleDateFormat(TRACK_RECORD.DAILY_DATE_FORMAT);
 	private static final SimpleDateFormat dailyShortFormat = new SimpleDateFormat(TRACK_RECORD.DAILY_SHORT_DATE_FORMAT);
-	private final long DAY_MILLIS = 1000 * 60 * 60 * 24;
 	private final AtomicBoolean isStarted = new AtomicBoolean(true);
 	private final AtomicBoolean isRunning = new AtomicBoolean(false);
 	private final Random random = new Random(1L);
@@ -71,7 +70,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private IVolatilityEngine volaEngine;
 	private IData historical;
 	private BarData computedHistorical = new BarData();
-	private Thread thread;
+//	private Thread thread;
 	private final List<Option> options = new CopyOnWriteArrayList<>();
 
 	// @Config.Param(name="Historical Volatility Engine",
@@ -83,7 +82,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private String symbol = "FTSEMIB";
 
 	@Config.Param(name = "Clock frequency", description = "Execution speed. Set to zero for no latency.", step = 1)
-	private Long clockFrequency = 200L;
+	private Long clockFrequency = 100L;
 
 	@Config.Param(name = "Future Bid/Ask spread", description = "Bid/Ask spread expressed in points", step = 0.01)
 	private Double bidAskSpread = 5.0;
@@ -110,7 +109,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private Double optionPointValue = 2.5;
 
 	@Config.Param(name = "Number of strikes", description = "Number of strikes above and below first price", max = 50, step = 1)
-	private Integer optionStrikes = 10;
+	private Integer optionStrikes = 30;
 
 	@Config.Param(name = "% Margin required", description = "Margination required in percentage points", step = .1)
 	private Double marginRequired = .125;
@@ -121,10 +120,10 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	}
 
 	@Override
-	public void reset() {
-//		System.out.println("TextFileDataHandler.reset() "+this);
+	public boolean reset() {
 		idx.set(0);
 		computedHistorical = new BarData();
+		return true;
 	}
 
 	@Override
@@ -183,7 +182,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		}
 
 
-		thread = new Thread(new Runnable() {
+		new Thread(new Runnable() {
 			@Override
 			public void run() {
 				int OPEN = 0, HIGH = 1, LOW = 2, CLOSE = 3;
@@ -237,7 +236,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 							if (i == OPEN) {
 								DTime.Clock.update(currentBar.time - compressionRate);
-								if (prevBar != null && currentBar.time / DAY_MILLIS > prevBar.time / DAY_MILLIS) {
+								if (prevBar != null && currentBar.time / DUtils.DAY_MILLIS > prevBar.time / DUtils.DAY_MILLIS) {
 									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol,
 											currentBar, Event.Type.OnBarOpen, Event.Type.OnDayOpen));
 								} else {
@@ -246,7 +245,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 								}
 							} else if (i == CLOSE) {
 								DTime.Clock.update(currentBar.time);
-								if (nextBar == null || currentBar.time / DAY_MILLIS < nextBar.time / DAY_MILLIS) {
+								if (nextBar == null || currentBar.time / DUtils.DAY_MILLIS < nextBar.time / DUtils.DAY_MILLIS) {
 									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol,
 											currentBar, Event.Type.OnBarClose, Event.Type.OnDayClose));
 								} else {
@@ -269,8 +268,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 					}
 				}
 			}
-		}, "TextFileDataHandler");
-		thread.start();
+		}, "TextFileDataHandler").start();
 		return true;
 	}
 
@@ -297,19 +295,21 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		return !isStarted.get();
 	}
 
+
+
 	@Override
 	public boolean dispose() {
 		System.out.println("TextFileDataHandler.dispose()");
 		isStarted.set(false);
 		isRunning.set(false);
-		thread.interrupt();
-		thread = null;
+//		if(thread != null){
+//			thread.interrupt();
+//			while(!thread.isInterrupted()){
+//
+//			}
+//			thread = null;
+//		}
 		return true;
-	}
-
-	@Override
-	public ServiceStatus getStatus() {
-		return null;
 	}
 
 	private static void optionsPricing(final IMsg msg, final Market market, final long compresssionRate,

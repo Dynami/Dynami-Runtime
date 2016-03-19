@@ -30,11 +30,11 @@ import org.dynami.core.bus.IMsg;
 import org.dynami.core.config.Config;
 import org.dynami.core.services.IAssetService;
 import org.dynami.core.utils.DTime;
+import org.dynami.runtime.IService;
 import org.dynami.runtime.impl.Execution;
-import org.dynami.runtime.impl.Service;
 import org.dynami.runtime.topics.Topics;
 
-public class AssetService extends Service implements IAssetService  {
+public class AssetService implements IService, IAssetService  {
 	private final Map<String, Asset> registry = new ConcurrentSkipListMap<>();
 	private final Map<String, OptionChain> chains = new ConcurrentSkipListMap<>();
 	private final IMsg msg = Execution.Manager.msg();
@@ -46,10 +46,22 @@ public class AssetService extends Service implements IAssetService  {
 	}
 
 	@Override
-	public boolean init(Config config) throws Exception {
+	public boolean dispose() {
+		System.out.println("AssetService.dispose()");
 		registry.clear();
-		chains.clear();
+		return reset();
+	}
 
+	@Override
+	public boolean reset() {
+		System.out.println("AssetService.reset()");
+		chains.clear();
+		return true;
+	}
+
+	@Override
+	public boolean init(Config config) throws Exception {
+		System.out.println("AssetService.init()");
 		if(!initialized){
 			msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, _msg)->{
 				Event e =(Event)_msg;
@@ -113,8 +125,6 @@ public class AssetService extends Service implements IAssetService  {
 					.collect(Collectors.toList())
 				);
 	}
-
-
 
 	@Override
 	public OptionChain getOptionChainFor(String symbol) {

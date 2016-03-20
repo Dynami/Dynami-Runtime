@@ -223,10 +223,10 @@ public enum Execution implements IExecutionManager {
 		stateMachine.addListener(listener);
 	}
 
-	@Override
-	public boolean canMoveTo(State state) {
-		return stateMachine.canChangeState(state);
-	}
+//	@Override
+//	public boolean canMoveTo(State state) {
+//		return stateMachine.canChangeState(state);
+//	}
 
 	@Override
 	public IServiceBus getServiceBus() {

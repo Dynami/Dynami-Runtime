@@ -154,7 +154,7 @@ public interface IExecutionManager {
 	 * @param state
 	 * @return true if change is allowed, false otherwise
 	 */
-	public boolean canMoveTo(State state);
+//	public boolean canMoveTo(State state);
 
 	/**
 	 * Releases Execution Manager resources and propagates dispose commands to services

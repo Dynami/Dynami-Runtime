@@ -20,9 +20,9 @@ import javax.swing.text.Position;
 import org.dynami.core.Event;
 import org.dynami.core.assets.Asset;
 import org.dynami.core.assets.Book;
+import org.dynami.core.orders.OrderRequest;
 import org.dynami.core.services.ITraceService;
 import org.dynami.runtime.IServiceBus.ServiceStatus;
-import org.dynami.runtime.orders.OrderRequestWrapper;
 
 public enum Topics {
 	TRACE("a", ITraceService.Trace.class),
@@ -37,7 +37,8 @@ public enum Topics {
 	STRATEGY_EVENT("h", Event.class),
 	SERVICE_STATUS("i", ServiceStatus.class),
 	EXECUTED_ORDER("j", Position.class),
-	ORDER_REQUESTS("o", OrderRequestWrapper.class),
+	ORDER_REQUESTS("o", OrderRequest.class),
+	CANCEL_REQUESTS("c", long.class), //order request id
 	;
 
 	public final String topic;

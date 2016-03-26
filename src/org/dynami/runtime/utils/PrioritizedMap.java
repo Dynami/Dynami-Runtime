@@ -30,8 +30,8 @@ public class PrioritizedMap<K, V> extends ConcurrentSkipListMap<K, V> {
 
 	public V put(int prioriry, K key, V value){
 		final V out = super.put(key, value);
-		final PMEntry<K, V> entry = new PMEntry<K, V>(prioriry, key, value);
-		System.out.println("PrioritizedMap.put() remove previous "+key+"\t "+pairs.remove(entry));
+//		final PMEntry<K, V> entry = new PMEntry<K, V>(prioriry, key, value);
+//		System.out.println("PrioritizedMap.put() remove previous "+key+"\t "+pairs.remove(entry));
 		pairs.add(new PMEntry<K, V>(prioriry, key, value));
 		return out;
 	}

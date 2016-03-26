@@ -17,9 +17,7 @@ package org.dynami.runtime.orders;
 
 import java.util.List;
 
-import org.dynami.core.assets.Book;
 import org.dynami.core.bus.IMsg;
-import org.dynami.core.orders.MarketOrder;
 import org.dynami.core.orders.OrderRequest;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
@@ -28,7 +26,7 @@ public class PendingConditions {
 	private final OrderRequest request;
 	private final List<?> parent;
 	private boolean invalidate = false;
-	
+
 	public PendingConditions(OrderRequest request, List<?> parent){
 		this.request = request;
 		this.parent = parent;
@@ -38,43 +36,43 @@ public class PendingConditions {
 			Execution.Manager.msg().subscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
 		}
 	}
-	
+
 	public void unsubscribeMe(){
 		invalidate = true;
 		Execution.Manager.msg().unsubscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
 		Execution.Manager.msg().unsubscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, askHandler);
 	}
-	
+
 	private final IMsg.Handler bidHandler = new IMsg.Handler(){
 		public void update(boolean last, Object msg) {
 			if(!invalidate){
-				request.conditions().forEach(cond->{
-					if(cond.check(request.quantity, (Book.Orders)msg, null)){
-						Execution.Manager.msg().unsubscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, this);
-						Execution.Manager.dynami().orders().send(new MarketOrder(request.symbol, -request.quantity, cond.toString()));
-						parent.remove(PendingConditions.this);
-						invalidate = true;
-						return;
-					}
-				});
+//				request.conditions().forEach(cond->{
+//					if(cond.check(request.quantity, (Book.Orders)msg, null)){
+//						Execution.Manager.msg().unsubscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, this);
+//						Execution.Manager.dynami().orders().marketOrder(request.symbol, -request.quantity, cond.toString());
+//						parent.remove(PendingConditions.this);
+//						invalidate = true;
+//						return;
+//					}
+//				});
 			}
 		};
 	};
-	
-	
+
+
 	private final IMsg.Handler askHandler = new IMsg.Handler(){
 		public void update(boolean last, Object msg) {
 			if(!invalidate){
-				request.conditions().forEach(cond->{
-					if(cond.check(request.quantity, null, (Book.Orders)msg)){
-						Execution.Manager.msg().unsubscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, this);
-						Execution.Manager.dynami().orders().send(new MarketOrder(request.symbol, -request.quantity, cond.toString()));
-						parent.remove(PendingConditions.this);
-						invalidate = true;
-						return;
-					}
-				});
+//				request.conditions().forEach(cond->{
+//					if(cond.check(request.quantity, null, (Book.Orders)msg)){
+//						Execution.Manager.msg().unsubscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, this);
+//						Execution.Manager.dynami().orders().marketOrder(request.symbol, -request.quantity, cond.toString());
+//						parent.remove(PendingConditions.this);
+//						invalidate = true;
+//						return;
+//					}
+//				});
 			}
 		};
-	}; 
+	};
 }

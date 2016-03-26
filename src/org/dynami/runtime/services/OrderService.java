@@ -17,126 +17,165 @@ package org.dynami.runtime.services;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import org.dynami.core.assets.Asset;
+import org.dynami.core.assets.Asset.Tradable;
+import org.dynami.core.assets.Book;
 import org.dynami.core.config.Config;
-import org.dynami.core.orders.MarketOrder;
 import org.dynami.core.orders.OrderRequest;
+import org.dynami.core.portfolio.ExecutedOrder;
 import org.dynami.core.services.IOrderService;
+import org.dynami.core.utils.DTime;
 import org.dynami.runtime.IService;
 import org.dynami.runtime.impl.Execution;
-import org.dynami.runtime.orders.OrderRequestWrapper;
 import org.dynami.runtime.topics.Topics;
 
 public class OrderService implements IService, IOrderService {
-	private final AtomicBoolean shutdown = new AtomicBoolean(false);
-	private final List<OrderRequestWrapper> requests = new CopyOnWriteArrayList<>();
+	private final AtomicInteger ids = new AtomicInteger(0);
+	private final List<OrderRequest> requests = new CopyOnWriteArrayList<OrderRequest>();
+//	private final List<OrderRequest> executed = new CopyOnWriteArrayList<OrderRequest>();
 
 	@Override
 	public String id() {
-		return IOrderService.ID;
+		return ID;
 	}
 
 	@Override
 	public boolean dispose() {
-		shutdown.set(true);
+		requests.clear();
+//		executed.clear();
+		ids.set(0);
 		return true;
 	}
 
 	@Override
-	public long send(OrderRequest order, IOrderHandler handler) {
-		System.out.println("OrderService.send() "+order.toString());
-		OrderRequestWrapper request = new OrderRequestWrapper(order, handler);
+	public <T extends Config> boolean init(T config) throws Exception {
+
+		Execution.Manager.msg().subscribe(Topics.INSTRUMENT.topic, (_last, _msg)->{
+			final Asset asset = (Asset)_msg;
+
+			Execution.Manager.msg().subscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+asset.symbol, (last, msg)->{
+				final Book.Orders book = (Book.Orders)msg;
+				requests.stream()
+					.filter(o->o.getStatus().equals(IOrderService.Status.Pending))
+					.filter(o->o.symbol.equals(book.symbol))
+					.filter(o->o.quantity>0)
+					.filter(o->o.price >= book.price)
+					.peek((o)->{
+						System.out.println("OrderService-> executed "+o.id);
+						o.updateStatus(IOrderService.Status.Executed);
+						Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(o.id, o.symbol, book.price, o.quantity, DTime.Clock.getTime()));
+						o.handler.onOrderExecuted(Execution.Manager.dynami(), o);
+					})
+					.count();
+			});
+			Execution.Manager.msg().subscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+asset.symbol, (last, msg)->{
+				final Book.Orders book = (Book.Orders)msg;
+				requests.stream()
+					.filter(o->o.getStatus().equals(IOrderService.Status.Pending))
+					.filter(o->o.symbol.equals(book.symbol))
+					.filter(o->o.quantity<0)
+					.filter(o->o.price <= book.price)
+					.peek((o)->{
+						System.out.println("OrderService-> executed "+o.id);
+						o.updateStatus(IOrderService.Status.Executed);
+						Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(o.id, o.symbol, book.price, o.quantity, DTime.Clock.getTime()));
+						o.handler.onOrderExecuted(Execution.Manager.dynami(), o);
+					})
+					.count();
+			});
+		});
+		return IService.super.init(config);
+	}
+
+	@Override
+	public long limitOrder(String symbol, double price, long quantity, String note, IOrderHandler handler) {
+		final int id = ids.getAndIncrement();
+		System.out.println("OrderService.limitOrder() "+id+" "+symbol+" "+quantity+" at "+price);
+		final OrderRequest request = new OrderRequest(
+				id,
+				DTime.Clock.getTime(),
+				symbol,
+				quantity,
+				price,
+				note,
+				handler);
 		requests.add(request);
 		Execution.Manager.msg().async(Topics.ORDER_REQUESTS.topic, request);
-		return order.id;
+		return id;
 	}
 
 	@Override
-	public long marketOrder(String symbol, long quantity, String note) {
-		return send(new MarketOrder(symbol, quantity, note));
+	public long limitOrder(String symbol, double price, long quantity, String note) {
+		return limitOrder(symbol, price, quantity, note, new IOrderService.IOrderHandler() {});
 	}
 
 	@Override
-	public long marketOrder(String symbol, long quantity, String note, IOrderHandler handler) {
-		return send(new MarketOrder(symbol, quantity, note), handler);
+	public long limitOrder(String symbol, double price, long quantity) {
+		return limitOrder(symbol, price, quantity, "", new IOrderService.IOrderHandler() {});
 	}
 
 	@Override
 	public long marketOrder(String symbol, long quantity) {
-		return send(new MarketOrder(symbol, quantity));
+		return marketOrder(symbol, quantity, "", new IOrderService.IOrderHandler() {});
 	}
 
 	@Override
-	public long send(OrderRequest order) {
-		return send(order, new IOrderHandler(){});
-	}
-
-	private OrderRequestWrapper getOrderWrapperById(long id) {
-		Optional<OrderRequestWrapper> opt = requests.stream()
-				.filter(r->r.getRequest().id == id)
-				.findFirst();
-		return opt.get();
+	public long marketOrder(String symbol, long quantity, String note) {
+		return marketOrder(symbol, quantity, note, new IOrderService.IOrderHandler() {});
 	}
 
 	@Override
-	public OrderRequest getOrderById(long id) {
-		OrderRequestWrapper w = getOrderWrapperById(id);
-		return (w != null)? w.getRequest():null;
+	public long marketOrder(String symbol, long quantity, String note, IOrderHandler handler) {
+		final Tradable trad = (Tradable)Execution.Manager.dynami().assets().getBySymbol(symbol);
+		double price = (quantity>0)?trad.book.ask().price:trad.book.bid().price;
+		return limitOrder(symbol, price, quantity, note, handler);
 	}
 
 	@Override
-	public Status getOrderStatus(long id) {
-		OrderRequestWrapper w = getOrderWrapperById(id);
-		return (w != null)?w.getStatus():null;
+	public void removePendings() {
+		requests.clear();
 	}
 
 	@Override
-	public boolean cancellOrder(long id) {
-		Optional<OrderRequestWrapper> opt = requests.stream().filter(r->r.getRequest().id == id).findFirst();
-		if(opt.isPresent()){
-			OrderRequestWrapper orderReq = opt.get();
-			Status status = orderReq.getStatus();
-			if(status.equals(Status.Pending) || status.equals(Status.PartiallyExecuted)){
-				orderReq.setStatus(Status.Cancelled);
-				orderReq.cancelOrderRequest();
-				return true;
-			} else {
-				return false;
-			}
-		} else {
-			return false;
+	public OrderRequest getOrderById(int id) {
+		return requests.get(id);
+	}
+
+	@Override
+	public Status getOrderStatus(int id) {
+		OrderRequest req = getOrderById(id);
+		if(req != null)
+			return requests.get(id).getStatus();
+		else
+			return null;
+	}
+
+	@Override
+	public boolean cancelOrder(int id) {
+		OrderRequest req = getOrderById(id);
+		if(req != null){
+			req.updateStatus(Status.Cancelled);
+			return true;
 		}
-	}
-
-	public void removePendings(){
-		getPendingOrders().forEach(r->{
-			cancellOrder(r.id);
-		});
+		return false;
 	}
 
 	@Override
 	public List<OrderRequest> getPendingOrders() {
-		return Collections.unmodifiableList(
-				requests.stream()
-				.filter(r->r.getStatus().equals(Status.Pending))
-				.map(OrderRequestWrapper::getRequest)
-				.collect(Collectors.toList()));
+		return Collections.unmodifiableList(requests);
 	}
 
 	@Override
 	public boolean thereArePendingOrders() {
-		return requests.stream()
-				.anyMatch(r->r.getStatus().equals(Status.Pending));
+		return requests.size()>0;
 	}
 
 	@Override
 	public boolean thereArePendingOrders(String symbol) {
-		return requests.stream()
-				.allMatch(r-> r.getStatus().equals(Status.Pending) && r.getRequest().symbol.equals(symbol));
+		return requests.stream().filter(o->o.symbol.equals(symbol)).count()>0;
 	}
 }
 

@@ -21,15 +21,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.dynami.core.assets.Asset;
 import org.dynami.core.assets.Book;
 import org.dynami.core.bus.IMsg;
-import org.dynami.core.orders.MarketOrder;
 import org.dynami.core.orders.OrderRequest;
 import org.dynami.core.portfolio.ExecutedOrder;
 import org.dynami.core.services.IOrderService.IOrderHandler;
-import org.dynami.runtime.impl.Execution;
 import org.dynami.core.services.IOrderService.Status;
+import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 
 public class OrderRequestWrapper {
@@ -38,78 +36,78 @@ public class OrderRequestWrapper {
 	private final AtomicReference<Status> status = new AtomicReference<Status>(Status.Pending);
 	private final AtomicLong remainingQuantity = new AtomicLong(0);
 	private final List<PendingConditions> pendingConditions = new CopyOnWriteArrayList<>();
-	private final double price;
+	private double price;
 
 	public OrderRequestWrapper(OrderRequest request, IOrderHandler handler){
 		this.request = request;
 		this.handler = handler;
 		remainingQuantity.set(request.quantity);
 
-		final Asset.Tradable trad = Execution.Manager.dynami().assets().getBySymbol(request.symbol).asTradable();
-		if(request instanceof MarketOrder){
-			if(request.quantity>0){
-				if(trad.book.ask() == null ){
-					status.set(Status.Rejected);
-					handler.onOrderRejected(Execution.Manager.dynami(), request);
-					this.price = 0;
-					return;
-				}
-				this.price = trad.book.ask().price;
-			} else {
-				if(trad.book.bid() == null ){
-					status.set(Status.Rejected);
-					handler.onOrderRejected(Execution.Manager.dynami(), request);
-					this.price = 0;
-					return;
-				}
-				this.price = trad.book.bid().price;
-			}
-		} else {
-			price = request.price;
-		}
-		// check whether the order can be immediately executed or not
-		if(request instanceof MarketOrder){
-			if(request.quantity > 0 ){
-				if(trad.book.ask().quantity >= getRemainingQuantity()){
-					Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, getRemainingQuantity(), request.time));
-					status.set(Status.Executed);
-					setRemainingQuantity(0);
-					handler.onOrderExecuted(Execution.Manager.dynami(), request);
-					if(request.conditions().size() > 0){
-						pendingConditions.add(new PendingConditions(request, pendingConditions));
-					}
-					Execution.Manager.msg().unsubscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, askHandler);
-				} else {
-					status.set(Status.PartiallyExecuted);
-					setRemainingQuantity(getRemainingQuantity()-trad.book.ask().quantity);
-					Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, trad.book.ask().quantity, request.time));
-					handler.onOrderPartiallyExecuted(Execution.Manager.dynami(), request);
-				}
-			}
-			if(request.quantity < 0){
-				if(trad.book.bid().quantity >= -getRemainingQuantity()){
-					Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, getRemainingQuantity(), request.time));
-					status.set(Status.Executed);
-					setRemainingQuantity(0);
-					handler.onOrderExecuted(Execution.Manager.dynami(), request);
-					if(request.conditions().size() > 0){
-						pendingConditions.add(new PendingConditions(request, pendingConditions));
-					}
-					Execution.Manager.msg().unsubscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
-				} else {
-					status.set(Status.PartiallyExecuted);
-					setRemainingQuantity(getRemainingQuantity()+trad.book.bid().quantity);
-					Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, -trad.book.bid().quantity, request.time));
-					handler.onOrderPartiallyExecuted(Execution.Manager.dynami(), request);
-				}
-			}
-		} else {
-			if(request.quantity>0){
-				Execution.Manager.msg().subscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, askHandler);
-			} else if(request.quantity<0){
-				Execution.Manager.msg().subscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
-			}
-		}
+//		final Asset.Tradable trad = Execution.Manager.dynami().assets().getBySymbol(request.symbol).asTradable();
+//		if(request instanceof MarketOrder){
+//			if(request.quantity>0){
+//				if(trad.book.ask() == null ){
+//					status.set(Status.Rejected);
+//					handler.onOrderRejected(Execution.Manager.dynami(), request);
+//					this.price = 0;
+//					return;
+//				}
+//				this.price = trad.book.ask().price;
+//			} else {
+//				if(trad.book.bid() == null ){
+//					status.set(Status.Rejected);
+//					handler.onOrderRejected(Execution.Manager.dynami(), request);
+//					this.price = 0;
+//					return;
+//				}
+//				this.price = trad.book.bid().price;
+//			}
+//		} else {
+//			price = request.price;
+//		}
+//		// check whether the order can be immediately executed or not
+//		if(request instanceof MarketOrder){
+//			if(request.quantity > 0 ){
+//				if(trad.book.ask().quantity >= getRemainingQuantity()){
+//					Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, getRemainingQuantity(), request.time));
+//					status.set(Status.Executed);
+//					setRemainingQuantity(0);
+//					handler.onOrderExecuted(Execution.Manager.dynami(), request);
+//					if(request.conditions().size() > 0){
+//						pendingConditions.add(new PendingConditions(request, pendingConditions));
+//					}
+//					Execution.Manager.msg().unsubscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, askHandler);
+//				} else {
+//					status.set(Status.PartiallyExecuted);
+//					setRemainingQuantity(getRemainingQuantity()-trad.book.ask().quantity);
+//					Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, trad.book.ask().quantity, request.time));
+//					handler.onOrderPartiallyExecuted(Execution.Manager.dynami(), request);
+//				}
+//			}
+//			if(request.quantity < 0){
+//				if(trad.book.bid().quantity >= -getRemainingQuantity()){
+//					Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, getRemainingQuantity(), request.time));
+//					status.set(Status.Executed);
+//					setRemainingQuantity(0);
+//					handler.onOrderExecuted(Execution.Manager.dynami(), request);
+//					if(request.conditions().size() > 0){
+//						pendingConditions.add(new PendingConditions(request, pendingConditions));
+//					}
+//					Execution.Manager.msg().unsubscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
+//				} else {
+//					status.set(Status.PartiallyExecuted);
+//					setRemainingQuantity(getRemainingQuantity()+trad.book.bid().quantity);
+//					Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, -trad.book.bid().quantity, request.time));
+//					handler.onOrderPartiallyExecuted(Execution.Manager.dynami(), request);
+//				}
+//			}
+//		} else {
+//			if(request.quantity>0){
+//				Execution.Manager.msg().subscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, askHandler);
+//			} else if(request.quantity<0){
+//				Execution.Manager.msg().subscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
+//			}
+//		}
 	}
 
 	public double getPrice() {
@@ -135,9 +133,9 @@ public class OrderRequestWrapper {
 			status.set(Status.Executed);
 			setRemainingQuantity(0);
 			handler.onOrderExecuted(Execution.Manager.dynami(), request);
-			if(request.conditions().size() > 0){
-				pendingConditions.add(new PendingConditions(request, pendingConditions));
-			}
+//			if(request.conditions().size() > 0){
+//				pendingConditions.add(new PendingConditions(request, pendingConditions));
+//			}
 			Execution.Manager.msg().unsubscribe(Topics.BID_ORDERS_BOOK_PREFIX.topic+request.symbol, bidHandler);
 			invalidateMe.set(true);
 			return true;
@@ -156,9 +154,9 @@ public class OrderRequestWrapper {
 			status.set(Status.Executed);
 			setRemainingQuantity(0);
 			handler.onOrderExecuted(Execution.Manager.dynami(), request);
-			if(request.conditions().size() > 0){
-				pendingConditions.add(new PendingConditions(request, pendingConditions));
-			}
+//			if(request.conditions().size() > 0){
+//				pendingConditions.add(new PendingConditions(request, pendingConditions));
+//			}
 			Execution.Manager.msg().unsubscribe(Topics.ASK_ORDERS_BOOK_PREFIX.topic+request.symbol, askHandler);
 			invalidateMe.set(true);
 			return true;

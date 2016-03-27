@@ -15,10 +15,10 @@
  */
 package org.dynami.runtime.services;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.dynami.core.assets.Asset;
 import org.dynami.core.assets.Asset.Tradable;
@@ -35,6 +35,7 @@ import org.dynami.runtime.topics.Topics;
 public class OrderService implements IService, IOrderService {
 	private final AtomicInteger ids = new AtomicInteger(0);
 	private final List<OrderRequest> requests = new CopyOnWriteArrayList<OrderRequest>();
+	private boolean initialized = false;
 //	private final List<OrderRequest> executed = new CopyOnWriteArrayList<OrderRequest>();
 
 	@Override
@@ -52,7 +53,8 @@ public class OrderService implements IService, IOrderService {
 
 	@Override
 	public <T extends Config> boolean init(T config) throws Exception {
-
+		if(initialized) return true;
+		initialized = true;
 		Execution.Manager.msg().subscribe(Topics.INSTRUMENT.topic, (_last, _msg)->{
 			final Asset asset = (Asset)_msg;
 
@@ -141,14 +143,17 @@ public class OrderService implements IService, IOrderService {
 
 	@Override
 	public OrderRequest getOrderById(int id) {
-		return requests.get(id);
+		return requests.stream()
+				.filter(o->o.id == id)
+				.findFirst()
+				.get();
 	}
 
 	@Override
 	public Status getOrderStatus(int id) {
 		OrderRequest req = getOrderById(id);
 		if(req != null)
-			return requests.get(id).getStatus();
+			return req.getStatus();
 		else
 			return null;
 	}
@@ -165,17 +170,25 @@ public class OrderService implements IService, IOrderService {
 
 	@Override
 	public List<OrderRequest> getPendingOrders() {
-		return Collections.unmodifiableList(requests);
+		return requests
+				.stream()
+				.filter(o->o.getStatus().equals(Status.Pending))
+				.collect(Collectors.toList());
 	}
 
 	@Override
 	public boolean thereArePendingOrders() {
-		return requests.size()>0;
+		return requests.stream()
+				.filter(o->o.getStatus().equals(Status.Pending))
+				.count()>0;
 	}
 
 	@Override
 	public boolean thereArePendingOrders(String symbol) {
-		return requests.stream().filter(o->o.symbol.equals(symbol)).count()>0;
+		return requests.stream()
+				.filter(o->o.symbol.equals(symbol))
+				.filter(o->o.status.get().equals(Status.Pending))
+				.count()>0;
 	}
 }
 

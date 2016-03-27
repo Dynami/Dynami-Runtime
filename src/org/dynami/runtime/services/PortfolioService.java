@@ -61,7 +61,6 @@ public class PortfolioService implements IService, IPortfolioService {
 
 	@Override
 	public boolean dispose() {
-		System.out.println("PortfolioService.dispose()");
 		ordersLog.clear();
 		openPositions.clear();
 		closedPositions.clear();
@@ -70,8 +69,8 @@ public class PortfolioService implements IService, IPortfolioService {
 		commissions.set(0.);
 		budget = 20_000.0;
 		initialized = false;
-		msg.unsubscribe(Topics.STRATEGY_EVENT.topic, strategyEventHandler);
-		msg.unsubscribe(Topics.EXECUTED_ORDER.topic, orderExecutedEventHandler);
+//		msg.unsubscribe(Topics.STRATEGY_EVENT.topic, strategyEventHandler);
+//		msg.unsubscribe(Topics.EXECUTED_ORDER.topic, orderExecutedEventHandler);
 		return true;
 	}
 
@@ -152,7 +151,6 @@ public class PortfolioService implements IService, IPortfolioService {
 
 	@Override
 	public boolean init(Config config) throws Exception {
-		System.out.println("PortfolioService.init()");
 		ordersLog.clear();
 		openPositions.clear();
 		closedPositions.clear();

@@ -70,7 +70,9 @@ public enum Msg implements IMsg {
 	public void subscribe(String topic, IMsg.Handler handler){
 		topics.putIfAbsent(topic, new TopicHandler());
 		final TopicHandler h = topics.get(topic);
-		h.subscribe(new TopicSubscriber(handler, h.cursor.get()));
+		if(!h.contains(handler)){
+			h.subscribe(new TopicSubscriber(handler, h.cursor.get()));
+		}
 	}
 
 	@Override
@@ -84,13 +86,13 @@ public enum Msg implements IMsg {
 	}
 
 
-	@Override
-	public void unsubscribeAllFor(String topic) {
-		TopicHandler topicHandler = topics.get(topic);
-		if(topicHandler != null){
-			topicHandler.subscribers.clear();
-		}
-	}
+//	@Override
+//	public void unsubscribeAllFor(String topic) {
+//		TopicHandler topicHandler = topics.get(topic);
+//		if(topicHandler != null){
+//			topicHandler.subscribers.clear();
+//		}
+//	}
 
 	@Override
 	public void removeTopic(String topic) {
@@ -105,8 +107,6 @@ public enum Msg implements IMsg {
 		topicHandler.buffer(msg);
 		return true;
 	}
-
-
 
 	@Override
 	public boolean sync(String topic, Object msg) {
@@ -166,6 +166,13 @@ public enum Msg implements IMsg {
 
 		public void buffer(Object msg){
 			buffer[cursor.getAndIncrement()%_SIZE_] = msg;
+		}
+
+		public boolean contains(Handler handler){
+			return subscribers
+					.stream()
+					.filter(s->s.handler.equals(handler))
+					.count() > 0;
 		}
 	}
 

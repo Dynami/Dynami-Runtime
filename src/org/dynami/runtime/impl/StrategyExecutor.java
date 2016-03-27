@@ -94,8 +94,9 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 		try {
 			final Event.Type[] eventFilter = eventFilters.get(stage.getClass());
 			final String[] symbolFilter = symbolFilters.get(stage.getClass());
-
+			System.out.println("StrategyExecutor.exec() Event ID: "+event.id);
 			if(event.isOneOfThese(eventFilter)){
+
 				if(symbolFilter.length > 0 ){
 					if(DUtils.in(event.symbol, symbolFilter)){
 						stage.process(this, event);
@@ -110,7 +111,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 
 		if(endStrategy.get()){
 			try {
-				Execution.Manager.msg().unsubscribeAllFor(Topics.STRATEGY_EVENT.topic);
+				//Execution.Manager.msg().unsubscribeAllFor(Topics.STRATEGY_EVENT.topic);
 				lastIncomingEvent.set(null);
 				lastExecutedEvent.set(null);
 				endStrategy.set(false);

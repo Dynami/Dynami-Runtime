@@ -47,21 +47,18 @@ public class AssetService implements IService, IAssetService  {
 
 	@Override
 	public boolean dispose() {
-		System.out.println("AssetService.dispose()");
 		registry.clear();
 		return reset();
 	}
 
 	@Override
 	public boolean reset() {
-		System.out.println("AssetService.reset()");
 		chains.clear();
 		return true;
 	}
 
 	@Override
 	public boolean init(Config config) throws Exception {
-		System.out.println("AssetService.init()");
 		if(!initialized){
 			msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, _msg)->{
 				Event e =(Event)_msg;

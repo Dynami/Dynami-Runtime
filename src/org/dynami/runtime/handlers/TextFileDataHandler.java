@@ -259,12 +259,10 @@ public class TextFileDataHandler implements IService, IDataHandler {
 						}
 						prevBar = currentBar;
 					} else {
-						try {
-							Thread.sleep(clockFrequency.longValue());
-						} catch (InterruptedException e) {
-						}
+						try { Thread.sleep(clockFrequency.longValue()); } catch (InterruptedException e) {}
 					}
 				}
+				System.out.println("TextFileDataHandler.init() closing TextFileDataHandler thread");
 			}
 		}, "TextFileDataHandler").start();
 		return true;
@@ -297,16 +295,9 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 	@Override
 	public boolean dispose() {
-		System.out.println("TextFileDataHandler.dispose()");
 		isStarted.set(false);
 		isRunning.set(false);
-//		if(thread != null){
-//			thread.interrupt();
-//			while(!thread.isInterrupted()){
-//
-//			}
-//			thread = null;
-//		}
+		System.out.println("TextFileDataHandler.dispose()");
 		return true;
 	}
 
@@ -522,7 +513,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	}
 
 	/**
-	 * Get expiration dates (third friday of each month) in the date interval.
+	 * Get expiration dates (third Friday of each month) in the date interval.
 	 * @param start
 	 * @param end
 	 */
@@ -545,9 +536,6 @@ public class TextFileDataHandler implements IService, IDataHandler {
 				++countFriday;
 				if (countFriday == 3) {
 					expires.add(cal.getTimeInMillis());
-					// System.out.println("TextFileDataHandler.expirations( )
-					// "+DUtils.DATE_FORMAT.format(cal.getTimeInMillis())+ "
-					// "+cal.get(Calendar.DAY_OF_WEEK));
 				}
 			}
 			cal.add(Calendar.DAY_OF_MONTH, 1);

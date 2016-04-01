@@ -128,6 +128,10 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 	@Override
 	public boolean init(Config config) throws Exception {
+		if(!dataFile.exists()){
+			Execution.Manager.msg().async(Topics.INTERNAL_ERRORS.topic, new IllegalStateException("File ["+dataFile.getAbsolutePath()+"] doesn't exist"));
+			return false;
+		}
 		volaEngine = volaEngineClass.newInstance();
 		historical = restorePriceData(dataFile);
 		historical.setAutoCompressionRate();

@@ -195,6 +195,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 					if (isRunning.get()) {
 						if (idx.get() >= historical.size()) {
 							System.out.println("No more data!!! Give X or XX command to print final status");
+							msg.sync(Topics.STRATEGY_EVENT.topic, Event.Factory.noMoreDataEvent(symbol));
 							break;
 						}
 						currentBar = historical.get(idx.getAndIncrement());

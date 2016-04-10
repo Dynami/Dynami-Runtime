@@ -39,36 +39,36 @@ public class PrioritizedMap<K, V> extends ConcurrentSkipListMap<K, V> {
 	public Collection<V> prioritized(){
 		return pairs.stream().sorted().map(PMEntry::getValue).collect(Collectors.toList());
 	}
-}
 
+	public static class PMEntry<K, V> implements Comparable<PMEntry<K,V>> {
+		final int priority;
+		final K key;
+		final V value;
 
-class PMEntry<K, V> implements Comparable<PMEntry<K,V>> {
-	final int priority;
-	final K key;
-	final V value;
+		public PMEntry(final int priority, final K key, final V value) {
+			this.priority = priority;
+			this.key = key;
+			this.value = value;
+		}
 
-	public PMEntry(final int priority, final K key, final V value) {
-		this.priority = priority;
-		this.key = key;
-		this.value = value;
-	}
+		@Override
+		public int compareTo(PMEntry<K, V> arg0) {
+			return Integer.compare(priority, arg0.priority);
+		}
 
-	@Override
-	public int compareTo(PMEntry<K, V> arg0) {
-		return Integer.compare(priority, arg0.priority);
-	}
+		@Override
+		public boolean equals(Object obj) {
+			if(obj instanceof PMEntry){
+				PMEntry<?, ?> p = (PMEntry<?, ?>)obj;
+				return key.equals(p.key);
+			} else {
+				return super.equals(obj);
+			}
+		}
 
-	@Override
-	public boolean equals(Object obj) {
-		if(obj instanceof PMEntry){
-			PMEntry<?, ?> p = (PMEntry<?, ?>)obj;
-			return key.equals(p.key);
-		} else {
-			return super.equals(obj);
+		public V getValue() {
+			return value;
 		}
 	}
-
-	public V getValue() {
-		return value;
-	}
 }
+

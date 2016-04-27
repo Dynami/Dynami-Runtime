@@ -55,10 +55,5 @@
 			<artifactId>Dynami-Core</artifactId>
 			<version>0.0.1</version>
 		</dependency>
-		<dependency>
-			<groupId>jquantlib</groupId>
-			<artifactId>jquantlib</artifactId>
-			<version>0.2.4</version>
-		</dependency>
 	</dependencies>
 </project>

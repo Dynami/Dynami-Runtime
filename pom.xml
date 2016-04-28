@@ -6,13 +6,6 @@
 	<version>0.0.1</version>
 	<name>Dynami-Runtime</name>
 	<description>Dynami runtime engine for executing trading strategies</description>
-	<repositories>
-		<repository>
-			<id>in-project</id>
-			<name>In Project Repo</name>
-			<url>file://D:/dynami-repo/Dynami-Runtime/libs/</url>
-		</repository>
-	</repositories>
 	<build>
 		<sourceDirectory>src</sourceDirectory>
 		<testSourceDirectory>src_test</testSourceDirectory>
@@ -54,6 +47,13 @@
 			<groupId>org.dynami</groupId>
 			<artifactId>Dynami-Core</artifactId>
 			<version>0.0.1</version>
+		</dependency>
+		<dependency>
+			<groupId>jquantlib</groupId>
+			<artifactId>jquantlib</artifactId>
+			<version>0.2.4</version>
+			<systemPath>${project.basedir}/libs/jquantlib-0.2.4.jar</systemPath>
+			<scope>system</scope>
 		</dependency>
 	</dependencies>
 </project>

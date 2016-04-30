@@ -193,6 +193,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 				Bar prevBar = null, currentBar, nextBar;
 				while (isStarted.get()) {
 					if (isRunning.get()) {
+						
 						if (idx.get() >= historical.size()) {
 							System.out.println("No more data!!! Give X or XX command to print final status");
 							msg.sync(Topics.STRATEGY_EVENT.topic, Event.Factory.noMoreDataEvent(symbol));
@@ -206,62 +207,65 @@ public class TextFileDataHandler implements IService, IDataHandler {
 						} else {
 							nextBar = null;
 						}
-						// System.out.println("DataProvider.init(Bar)
-						// "+currentBar);
-						HIGH = (random.nextBoolean()) ? 1 : 2;
-						LOW = (HIGH == 1) ? 2 : 1;
-						double price = currentBar.close;
-						for (int i = 0; i < 4; i++) {
-							if (i == OPEN) {
-								price = currentBar.open;
-							} else if (i == HIGH) {
-								price = currentBar.high;
-								continue;
-							} else if (i == LOW) {
-								price = currentBar.low;
-								continue;
-							} else if (i == CLOSE) {
-								price = currentBar.close;
-							}
-
-							if(optionPricing){
-								optionsPricing(msg, market, compressionRate, computedHistorical, volaEngine, options,
-										optionStep, currentBar.time, price, bidAskSpread, riskfreeRate);
-							}
-							if (i == OPEN) {
-								DTime.Clock.update(currentBar.time - compressionRate);
-								if (prevBar != null && currentBar.time / DUtils.DAY_MILLIS > prevBar.time / DUtils.DAY_MILLIS) {
-									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol,
-											currentBar, Event.Type.OnBarOpen, Event.Type.OnDayOpen));
-								} else {
-									msg.async(Topics.STRATEGY_EVENT.topic,
-											Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarOpen));
+						try {
+							HIGH = (random.nextBoolean()) ? 1 : 2;
+							LOW = (HIGH == 1) ? 2 : 1;
+							double price = currentBar.close;
+							for (int i = 0; i < 4; i++) {
+								if (i == OPEN) {
+									price = currentBar.open;
+								} else if (i == HIGH) {
+									price = currentBar.high;
+									continue;
+								} else if (i == LOW) {
+									price = currentBar.low;
+									continue;
+								} else if (i == CLOSE) {
+									price = currentBar.close;
 								}
-							} else if (i == CLOSE) {
-								DTime.Clock.update(currentBar.time);
-								if (nextBar == null || currentBar.time / DUtils.DAY_MILLIS < nextBar.time / DUtils.DAY_MILLIS) {
-									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol,
-											currentBar, Event.Type.OnBarClose, Event.Type.OnDayClose));
-								} else {
-									msg.async(Topics.STRATEGY_EVENT.topic,
-											Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarClose));
+
+								if(optionPricing){
+									optionsPricing(msg, market, compressionRate, computedHistorical, volaEngine, options,
+											optionStep, currentBar.time, price, bidAskSpread, riskfreeRate);
 								}
-							}
-							Book.Orders bid = new Book.Orders(currentBar.symbol, currentBar.time, Side.BID, 1,
-									price - bidAskSpread / 2, 100);
-							msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, bid);
-							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, bid));
+								if (i == OPEN) {
+									DTime.Clock.update(currentBar.time - compressionRate);
+									if (prevBar != null && currentBar.time / DUtils.DAY_MILLIS > prevBar.time / DUtils.DAY_MILLIS) {
+										msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol,
+												currentBar, Event.Type.OnBarOpen, Event.Type.OnDayOpen));
+									} else {
+										msg.async(Topics.STRATEGY_EVENT.topic,
+												Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarOpen));
+									}
+								} else if (i == CLOSE) {
+									DTime.Clock.update(currentBar.time);
+									if (nextBar == null || currentBar.time / DUtils.DAY_MILLIS < nextBar.time / DUtils.DAY_MILLIS) {
+										msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol,
+												currentBar, Event.Type.OnBarClose, Event.Type.OnDayClose));
+									} else {
+										msg.async(Topics.STRATEGY_EVENT.topic,
+												Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarClose));
+									}
+								}
+								Book.Orders bid = new Book.Orders(currentBar.symbol, currentBar.time, Side.BID, 1,
+										price - bidAskSpread / 2, 100);
+								msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, bid);
+								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, bid));
 
-							Book.Orders ask = new Book.Orders(currentBar.symbol, currentBar.time, Side.ASK, 1,
-									price + bidAskSpread / 2, 100);
-							msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, ask);
-							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, ask));
+								Book.Orders ask = new Book.Orders(currentBar.symbol, currentBar.time, Side.ASK, 1,
+										price + bidAskSpread / 2, 100);
+								msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, ask);
+								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, ask));
 
-							try {
-								TimeUnit.MILLISECONDS.sleep(clockFrequency.longValue() / 2);
-							} catch (InterruptedException e) {
+								try {
+									TimeUnit.MILLISECONDS.sleep(clockFrequency.longValue() / 2);
+								} catch (InterruptedException e) {}
 							}
+							
+						} catch(RuntimeException e){
+							Execution.Manager.msg().async(Topics.INTERNAL_ERRORS.topic, e);
 						}
+						
 						prevBar = currentBar;
 					} else {
 						try { Thread.sleep(clockFrequency.longValue()); } catch (InterruptedException e) {}

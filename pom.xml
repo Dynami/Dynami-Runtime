@@ -6,6 +6,13 @@
 	<version>0.0.1</version>
 	<name>Dynami-Runtime</name>
 	<description>Dynami runtime engine for executing trading strategies</description>
+	<repositories>
+		<repository>
+			<id>dynami-runtime-in-project</id>
+			<name>In Dynami Runtime Repo</name>
+			<url>file://${project.basedir}/libs</url>
+		</repository>
+	</repositories>
 	<build>
 		<sourceDirectory>src</sourceDirectory>
 		<testSourceDirectory>src_test</testSourceDirectory>
@@ -18,18 +25,6 @@
 					<target>1.8</target>
 				</configuration>
 			</plugin>
-			<!-- <plugin> -->
-			<!-- <groupId>org.apache.maven.plugins</groupId> -->
-			<!-- <artifactId>maven-source-plugin</artifactId> -->
-			<!-- <executions> -->
-			<!-- <execution> -->
-			<!-- <id>attach-sources</id> -->
-			<!-- <goals> -->
-			<!-- <goal>jar</goal> -->
-			<!-- </goals> -->
-			<!-- </execution> -->
-			<!-- </executions> -->
-			<!-- </plugin> -->
 		</plugins>
 	</build>
 	<dependencies>
@@ -49,11 +44,9 @@
 			<version>0.0.1</version>
 		</dependency>
 		<dependency>
-			<groupId>jquantlib</groupId>
+			<groupId>org.quant</groupId>
 			<artifactId>jquantlib</artifactId>
 			<version>0.2.4</version>
-			<systemPath>${project.basedir}/libs/jquantlib-0.2.4.jar</systemPath>
-			<scope>system</scope>
 		</dependency>
 	</dependencies>
 </project>

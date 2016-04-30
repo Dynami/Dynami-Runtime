@@ -125,8 +125,8 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 	}
 
 	private void runOncePerStage(IStage stage) {
-		technicalIndicators.clear();
 		try {
+			technicalIndicators.clear();
 			extractUserUtilities(stage, technicalIndicators, eventFilters, symbolFilters);
 			ClassSettings classSettings = strategySettings.getStageSettings(stage.getClass().getName());
 			if(classSettings != null){
@@ -134,6 +134,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 			}
 			stage.setup(this);
 		} catch (Exception e) {
+			e.printStackTrace();
 			Execution.Manager.msg().async(Topics.STRATEGY_ERRORS.topic, e);
 		}
 	}

@@ -82,7 +82,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private String symbol = "FTSEMIB";
 
 	@Config.Param(name = "Clock frequency", description = "Execution speed. Set to zero for no latency.", step = 1)
-	private Long clockFrequency = 500L;
+	private Long clockFrequency = 250L;
 
 	@Config.Param(name = "Future Bid/Ask spread", description = "Bid/Ask spread expressed in points", step = 0.01)
 	private Double bidAskSpread = 5.0;

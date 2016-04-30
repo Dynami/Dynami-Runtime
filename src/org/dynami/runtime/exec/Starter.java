@@ -51,7 +51,7 @@ public class Starter {
 					// set proper path, but let empty file for the moment
 					"-file", "../Dynami-Sample-Strategy/resources/myPersonalSettings.dynami",
 					// set proper path
-					"-strategy_lib", "../Dynami-UI/resources/dynami.sample.strategy_v1.jar"});
+					"-strategy_lib", "../Dynami-UI/resources/Dynami-Sample-Strategy-0.0.1.jar"});
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

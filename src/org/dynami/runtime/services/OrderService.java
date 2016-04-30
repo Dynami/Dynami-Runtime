@@ -68,6 +68,7 @@ public class OrderService implements IService, IOrderService {
 					.peek((o)->{
 						System.out.println("OrderService-> executed "+o.id);
 						o.updateStatus(IOrderService.Status.Executed);
+						o.setExecutionTime(DTime.Clock.getTime());
 						Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(o.id, o.symbol, book.price, o.quantity, DTime.Clock.getTime()));
 						o.handler.onOrderExecuted(Execution.Manager.dynami(), o);
 					})
@@ -83,6 +84,7 @@ public class OrderService implements IService, IOrderService {
 					.peek((o)->{
 						System.out.println("OrderService-> executed "+o.id);
 						o.updateStatus(IOrderService.Status.Executed);
+						o.setExecutionTime(DTime.Clock.getTime());
 						Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(o.id, o.symbol, book.price, o.quantity, DTime.Clock.getTime()));
 						o.handler.onOrderExecuted(Execution.Manager.dynami(), o);
 					})
@@ -133,7 +135,27 @@ public class OrderService implements IService, IOrderService {
 	public long marketOrder(String symbol, long quantity, String note, IOrderHandler handler) {
 		final Tradable trad = (Tradable)Execution.Manager.dynami().assets().getBySymbol(symbol);
 		double price = (quantity>0)?trad.book.ask().price:trad.book.bid().price;
-		return limitOrder(symbol, price, quantity, note, handler);
+		
+		final int id = ids.getAndIncrement();
+		System.out.println("OrderService.marketOrder() "+id+" "+symbol+" "+quantity+" at "+price);
+		final OrderRequest request = new OrderRequest(
+				id,
+				DTime.Clock.getTime(),
+				symbol,
+				quantity,
+				price,
+				note,
+				handler);
+		System.out.println("OrderService-> executed "+id);
+		request.updateStatus(Status.Executed);
+		request.updateStatus(IOrderService.Status.Executed);
+		request.setExecutionTime(DTime.Clock.getTime());
+		Execution.Manager.msg().async(Topics.ORDER_REQUESTS.topic, request);
+		Execution.Manager.msg().async(Topics.EXECUTED_ORDER.topic, new ExecutedOrder(request.id, request.symbol, price, request.quantity, request.getExecutionTime()));
+		request.handler.onOrderExecuted(Execution.Manager.dynami(), request);
+		requests.add(request);
+		return id;
+		//return limitOrder(symbol, price, quantity, note, handler);
 	}
 
 	@Override

@@ -88,7 +88,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private Double bidAskSpread = 5.0;
 
 	@Config.Param(name = "Data file", description = "Text file containing instrument historical data")
-	private File dataFile = new File("./resources/FTSEMIB_1M_2015_10_02.txt");
+	private File dataFile = new File("./resources/FTSEMIB_1M_2015_10_02.txt");// FTSEMIB_1M_2016_04_30
 
 	@Config.Param(name = "Time compression", description = "Compression used for time frame", min = 1, max = 100, step = 1, type = Config.Type.TimeFrame)
 	private Long compressionRate = IData.TimeUnit.Day.millis() * 1;
@@ -144,7 +144,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		Asset.Index index = new Asset.Index(Asset.Family.Index, "^FTSEMIB", "IT0000000001", "FTSEMIB Index", 1, .01, market);
 
 		Asset.Future ftsemib = new Asset.Future(symbol, "IT00002344", "FTSE-MIB", futurePointValue, .05, marginRequired,
-				LastPriceEngine.MidPrice, market, dailyFormat.parse("31/12/2015").getTime(), 1L, index, () -> 1.); // risk
+				LastPriceEngine.MidPrice, market, dailyFormat.parse("31/12/9999").getTime(), 1L, index, () -> 1.); // risk
 
 		msg.async(Topics.INSTRUMENT.topic, ftsemib);
 

@@ -88,7 +88,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private Double bidAskSpread = 5.0;
 
 	@Config.Param(name = "Data file", description = "Text file containing instrument historical data")
-	private File dataFile = new File("./resources/FTSEMIB_1M_2015_10_02.txt");// FTSEMIB_1M_2016_04_30
+	private File dataFile = new File("./resources/FTSEMIB_1M_2015_10_02.txt");//FTSEMIB_1M_2015_10_02 FTSEMIB_1M_2016_04_30
 
 	@Config.Param(name = "Time compression", description = "Compression used for time frame", min = 1, max = 100, step = 1, type = Config.Type.TimeFrame)
 	private Long compressionRate = IData.TimeUnit.Day.millis() * 1;
@@ -299,8 +299,6 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	public boolean isDisposed() {
 		return !isStarted.get();
 	}
-
-
 
 	@Override
 	public boolean dispose() {
@@ -549,6 +547,9 @@ public class TextFileDataHandler implements IService, IDataHandler {
 			}
 			cal.add(Calendar.DAY_OF_MONTH, 1);
 		}
-		return expires.stream().mapToLong(Long::longValue).filter((o) -> o >= start).toArray();
+		return expires.stream()
+				.mapToLong(Long::longValue)
+				.filter((o) -> o >= start)
+				.toArray();
 	}
 }

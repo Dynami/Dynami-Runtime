@@ -15,9 +15,12 @@
  */
 package org.dynami.runtime;
 
+import java.util.List;
+
 import org.dynami.core.IStage;
 import org.dynami.core.IStrategy;
 import org.dynami.runtime.config.StrategySettings;
+import org.dynami.runtime.plot.PlottableObject;
 
 public interface IStrategyExecutor {
 	
@@ -28,6 +31,8 @@ public interface IStrategyExecutor {
 	public void dispose();
 	
 	public IStage getActiveStage();
+	
+	public List<PlottableObject> plottableObjects();
 
 	public static enum Keys {
 		CurrentStageCursor

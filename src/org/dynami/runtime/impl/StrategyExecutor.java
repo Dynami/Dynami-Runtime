@@ -18,11 +18,13 @@ package org.dynami.runtime.impl;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.dynami.core.Event;
 import org.dynami.core.IDynami;
@@ -31,6 +33,8 @@ import org.dynami.core.IStrategy;
 import org.dynami.core.ITechnicalIndicator;
 import org.dynami.core.bus.IMsg.Handler;
 import org.dynami.core.config.Config;
+import org.dynami.core.data.Series;
+import org.dynami.core.plot.Plot;
 import org.dynami.core.services.IAssetService;
 import org.dynami.core.services.IDataService;
 import org.dynami.core.services.IOrderService;
@@ -41,6 +45,8 @@ import org.dynami.runtime.IServiceBus;
 import org.dynami.runtime.IStrategyExecutor;
 import org.dynami.runtime.config.ClassSettings;
 import org.dynami.runtime.config.StrategySettings;
+import org.dynami.runtime.plot.PlotData;
+import org.dynami.runtime.plot.PlottableObject;
 import org.dynami.runtime.topics.Topics;
 
 public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
@@ -50,6 +56,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 	private final AtomicBoolean endStrategy = new AtomicBoolean(false);
 	private final Map<Class<? extends IStage>, Event.Type[]> eventFilters = new ConcurrentHashMap<>();
 	private final Map<Class<? extends IStage>, String[]> symbolFilters = new ConcurrentHashMap<>();
+	private final List<PlottableObject> plottableObjects = new ArrayList<>();
 
 //	private Event.Type[] eventFilter = {};
 //	private String[] symbolFilter = {};
@@ -104,6 +111,28 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 					stage.process(this, event);
 				}
 			}
+			PlotData plotData = new PlotData(event.time);
+			for(PlottableObject po : plottableObjects){
+				if(po.source instanceof ITechnicalIndicator){
+					ITechnicalIndicator ti = (ITechnicalIndicator)po.source;
+					String[] _names = ti.seriesNames();
+					List<Supplier<Series>> _series = ti.series();
+					for(int i = 0; i < _names.length; i++){
+						plotData.addData(new PlotData.Item(_names[i], _series.get(i).get().last()));
+					}
+				} else if(po.source instanceof Series){
+					plotData.addData(new PlotData.Item(po.name, ((Series)po.source).last()));
+				} else if(Integer.TYPE.isInstance(po.source)){
+					plotData.addData(new PlotData.Item(po.name, (int)po.source));
+				} else if(Long.TYPE.isInstance(po.source)){
+					plotData.addData(new PlotData.Item(po.name, (long)po.source));
+				} else if(Double.TYPE.isInstance(po.source)){
+					plotData.addData(new PlotData.Item(po.name, (double)po.source));
+				} else if(Float.TYPE.isInstance(po.source)){
+					plotData.addData(new PlotData.Item(po.name, (float)po.source));
+				}
+			}
+			Execution.Manager.msg().async(Topics.CHART_SIGNAL.topic, plotData);
 		} catch (Exception e) {
 			Execution.Manager.msg().async(Topics.STRATEGY_ERRORS.topic, e);
 		}
@@ -127,12 +156,13 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 	private void runOncePerStage(IStage stage) {
 		try {
 			technicalIndicators.clear();
-			extractUserUtilities(stage, technicalIndicators, eventFilters, symbolFilters);
+			extractUserUtilities(stage, technicalIndicators, eventFilters, symbolFilters, plottableObjects);
 			ClassSettings classSettings = strategySettings.getStageSettings(stage.getClass().getName());
 			if(classSettings != null){
 				applySettings(stage, classSettings);
 			}
 			stage.setup(this);
+			Execution.Manager.msg().async(Topics.NEW_STAGE.topic, stage.getClass().getSimpleName());
 		} catch (Exception e) {
 			e.printStackTrace();
 			Execution.Manager.msg().async(Topics.STRATEGY_ERRORS.topic, e);
@@ -142,7 +172,8 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 	private static void extractUserUtilities(final IStage stage,
 			final List<ITechnicalIndicator> techIndicators,
 			final Map<Class<? extends IStage>, Event.Type[]> eventFilters,
-			final Map<Class<? extends IStage>, String[]> symbolFilters) throws Exception {
+			final Map<Class<? extends IStage>, String[]> symbolFilters,
+			final List<PlottableObject> plottableObjects) throws Exception {
 
 		final Class<? extends IStage> clazz= stage.getClass();
 		final Field[] fields = clazz.getDeclaredFields();
@@ -152,6 +183,11 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 			obj = f.get(stage);
 			if(obj != null && obj instanceof ITechnicalIndicator ){
 				techIndicators.add( (ITechnicalIndicator)obj);
+			}
+			
+			Plot plot = f.getAnnotation(Plot.class);
+			if(plot != null){
+				plottableObjects.add(new PlottableObject(f.getName(), plot, f.get(stage)));
 			}
 		}
 
@@ -195,6 +231,11 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 	@Override
 	public void gotoEnd() {
 		endStrategy.set(true);
+	}
+	
+	@Override
+	public List<PlottableObject> plottableObjects() {
+		return Collections.unmodifiableList(plottableObjects);
 	}
 
 	@Override

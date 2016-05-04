@@ -23,6 +23,7 @@ import org.dynami.core.assets.Book;
 import org.dynami.core.orders.OrderRequest;
 import org.dynami.core.services.ITraceService;
 import org.dynami.runtime.IServiceBus.ServiceStatus;
+import org.dynami.runtime.plot.PlotData;
 
 public enum Topics {
 	TRACE("a", ITraceService.Trace.class),
@@ -39,6 +40,8 @@ public enum Topics {
 	EXECUTED_ORDER("j", Position.class),
 	ORDER_REQUESTS("o", OrderRequest.class),
 	CANCEL_REQUESTS("c", long.class), //order request id
+	CHART_SIGNAL("k", PlotData.class),
+	NEW_STAGE("d", String.class),
 	;
 
 	public final String topic;

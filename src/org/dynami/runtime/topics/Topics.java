@@ -41,7 +41,7 @@ public enum Topics {
 	ORDER_REQUESTS("o", OrderRequest.class),
 	CANCEL_REQUESTS("c", long.class), //order request id
 	CHART_SIGNAL("k", PlotData.class),
-	NEW_STAGE("d", String.class),
+	NEW_STAGE("w", String.class),
 	;
 
 	public final String topic;

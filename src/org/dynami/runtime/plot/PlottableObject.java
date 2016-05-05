@@ -15,24 +15,41 @@
  */
 package org.dynami.runtime.plot;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.dynami.core.ITechnicalIndicator;
 import org.dynami.core.plot.Plot;
 
 public class PlottableObject {
 	public final Plot meta;
 	public final String name;
+	private final List<String> keys = new ArrayList<>();
 	public final Object source;
 	
-	public PlottableObject(String name, Plot meta, Object source){
+	public PlottableObject(Plot meta, Object source, String _name){
 		if(meta.name().equals("")){
-			this.name = name;
+			this.name = _name;
 		} else {
 			this.name = meta.name();
+		}			
+		if(source instanceof ITechnicalIndicator){
+			String[] seriesNames = ((ITechnicalIndicator)source).seriesNames();
+			for(int i = 0; i < seriesNames.length; i++){
+				this.keys.add(meta.on()+"."+seriesNames[i]);
+			}
+		} else {
+			this.keys.add(meta.on()+"."+name);
 		}
 		this.meta = meta;
 		this.source = source;
 	}
 	
-	public String key() {
-		return meta.on()+"."+name;
+	public String on(){
+		return meta.on();
+	}
+	
+	public List<String> keys() {
+		return keys;
 	}
 }

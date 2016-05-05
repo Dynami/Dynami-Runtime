@@ -28,18 +28,17 @@ import org.dynami.runtime.plot.PlotData;
 public enum Topics {
 	TRACE("a", ITraceService.Trace.class),
 	TICK("b", Book.Orders.class),
-//	BAR("c", Bar.class),
+	CANCEL_REQUESTS("c", long.class), //order request id
 	INSTRUMENT("d", Asset.class),
 	ASK_ORDERS_BOOK_PREFIX("ea/", Book.Orders.class),
 	BID_ORDERS_BOOK_PREFIX("eb/", Book.Orders.class),
 	INTERNAL_ERRORS("f", Throwable.class),
 	STRATEGY_ERRORS("g", Throwable.class),
-	UI_ERRORS("p", Throwable.class),
 	STRATEGY_EVENT("h", Event.class),
 	SERVICE_STATUS("i", ServiceStatus.class),
 	EXECUTED_ORDER("j", Position.class),
 	ORDER_REQUESTS("o", OrderRequest.class),
-	CANCEL_REQUESTS("c", long.class), //order request id
+	UI_ERRORS("p", Throwable.class),
 	CHART_SIGNAL("k", PlotData.class),
 	NEW_STAGE("w", String.class),
 	;

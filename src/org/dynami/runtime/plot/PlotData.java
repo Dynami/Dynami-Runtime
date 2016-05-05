@@ -19,12 +19,14 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.dynami.core.data.Bar;
+
 public class PlotData {
-	final long time;
+	public final Bar bar;
 	private final Set<Item> data = new HashSet<>();
 	
-	public PlotData(long time){
-		this.time = time;
+	public PlotData(Bar bar){
+		this.bar = bar;
 	}
 	
 	public void addData(Item item){
@@ -36,12 +38,13 @@ public class PlotData {
 	}
 	
 	public static final class Item implements Comparable<Item> {
-		final String key;
-		final double data;
+		
+		public final String key;
+		public final double value;
 		
 		public Item(String key, double data){
 			this.key = key;
-			this.data = data;
+			this.value = data;
 		}
 		
 		@Override
@@ -52,6 +55,13 @@ public class PlotData {
 		@Override
 		public int hashCode() {
 			return key.hashCode();
+		}
+		
+		
+
+		@Override
+		public String toString() {
+			return "{key:" + key + ", value:" + value + "}";
 		}
 
 		@Override

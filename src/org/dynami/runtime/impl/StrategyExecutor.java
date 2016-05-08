@@ -117,7 +117,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 							String[] _names = ti.seriesNames();
 							List<Supplier<Series>> _series = ti.series();
 							for(int i = 0; i < _names.length; i++){
-								plotData.addData(new PlotData.Item(po.meta.on()+"."+_names[i], _series.get(i).get().last()));
+								plotData.addData(new PlotData.Item(po.meta.on()+"."+po.name+"."+_names[i], _series.get(i).get().last()));
 							}
 						}
 					} else if(po.source instanceof Series){

@@ -36,7 +36,7 @@ public class PlottableObject {
 		if(source instanceof ITechnicalIndicator){
 			String[] seriesNames = ((ITechnicalIndicator)source).seriesNames();
 			for(int i = 0; i < seriesNames.length; i++){
-				this.keys.add(meta.on()+"."+seriesNames[i]);
+				this.keys.add(meta.on()+"."+name+"."+seriesNames[i]);
 			}
 		} else {
 			this.keys.add(meta.on()+"."+name);

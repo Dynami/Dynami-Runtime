@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.dynami.core.Event;
 import org.dynami.core.IDynami;
@@ -47,6 +48,7 @@ import org.dynami.runtime.config.ClassSettings;
 import org.dynami.runtime.config.StrategySettings;
 import org.dynami.runtime.plot.PlotData;
 import org.dynami.runtime.plot.PlottableObject;
+import org.dynami.runtime.plot.PlottableRef;
 import org.dynami.runtime.topics.Topics;
 
 public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
@@ -56,7 +58,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 	private final AtomicBoolean endStrategy = new AtomicBoolean(false);
 	private final Map<Class<? extends IStage>, Event.Type[]> eventFilters = new ConcurrentHashMap<>();
 	private final Map<Class<? extends IStage>, String[]> symbolFilters = new ConcurrentHashMap<>();
-	private final List<PlottableObject> plottableObjects = new ArrayList<>();
+	private final List<PlottableRef> plottableRefs = new ArrayList<>();
 
 //	private Event.Type[] eventFilter = {};
 //	private String[] symbolFilter = {};
@@ -110,26 +112,26 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 			}
 			if(event.is(Event.Type.OnBarClose)){
 				final PlotData plotData = new PlotData(event.bar);
-				for(PlottableObject po : plottableObjects){
-					if(po.source instanceof ITechnicalIndicator){
-						ITechnicalIndicator ti = (ITechnicalIndicator)po.source;
+				for(PlottableRef ref : plottableRefs){
+					if(ref.getPO().source instanceof ITechnicalIndicator){
+						ITechnicalIndicator ti = (ITechnicalIndicator)ref.getPO().source;
 						if(ti.isReady()){
 							String[] _names = ti.seriesNames();
 							List<Supplier<Series>> _series = ti.series();
 							for(int i = 0; i < _names.length; i++){
-								plotData.addData(new PlotData.Item(po.meta.on()+"."+po.name+"."+_names[i], _series.get(i).get().last()));
+								plotData.addData(new PlotData.Item(ref.getPO().meta.on()+"."+ref.getPO().name+"."+_names[i], _series.get(i).get().last()));
 							}
 						}
-					} else if(po.source instanceof Series){
-						plotData.addData(new PlotData.Item(po.name, ((Series)po.source).last()));
-					} else if(Integer.TYPE.isInstance(po.source)){
-						plotData.addData(new PlotData.Item(po.name, (int)po.source));
-					} else if(Long.TYPE.isInstance(po.source)){
-						plotData.addData(new PlotData.Item(po.name, (long)po.source));
-					} else if(Double.TYPE.isInstance(po.source)){
-						plotData.addData(new PlotData.Item(po.name, (double)po.source));
-					} else if(Float.TYPE.isInstance(po.source)){
-						plotData.addData(new PlotData.Item(po.name, (float)po.source));
+					} else if(ref.getPO().source instanceof Series){
+						plotData.addData(new PlotData.Item(ref.getPO().name, ((Series)ref.getPO().source).last()));
+					} else if(Integer.TYPE.isInstance(ref.getPO().source) || ref.getPO().source instanceof Integer){
+						plotData.addData(new PlotData.Item(ref.getPO().name, ref.getField().getInt(stage)));
+					} else if(Long.TYPE.isInstance(ref.getPO().source) || ref.getPO().source instanceof Long){
+						plotData.addData(new PlotData.Item(ref.getPO().name, ref.getField().getLong(stage)));
+					} else if(Double.TYPE.isInstance(ref.getPO().source) || ref.getPO().source instanceof Double){
+						plotData.addData(new PlotData.Item(ref.getPO().meta.on()+"."+ref.getPO().name, ref.getField().getDouble(stage)));
+					} else if(Float.TYPE.isInstance(ref.getPO().source) || ref.getPO().source instanceof Float){
+						plotData.addData(new PlotData.Item(ref.getPO().name, ref.getField().getFloat(stage)));
 					}
 				}
 				Execution.Manager.msg().async(Topics.CHART_SIGNAL.topic, plotData);				
@@ -162,7 +164,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 				applySettings(stage, classSettings);
 			}
 			stage.setup(this);
-			extractUserUtilities(stage, technicalIndicators, eventFilters, symbolFilters, plottableObjects);
+			extractUserUtilities(stage, technicalIndicators, eventFilters, symbolFilters, plottableRefs);
 			Execution.Manager.msg().async(Topics.NEW_STAGE.topic, plottableObjects());
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -174,7 +176,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 			final List<ITechnicalIndicator> techIndicators,
 			final Map<Class<? extends IStage>, Event.Type[]> eventFilters,
 			final Map<Class<? extends IStage>, String[]> symbolFilters,
-			final List<PlottableObject> plottableObjects) throws Exception {
+			final List<PlottableRef> plottableRefs) throws Exception {
 
 		final Class<? extends IStage> clazz= stage.getClass();
 		final Field[] fields = clazz.getDeclaredFields();
@@ -188,7 +190,11 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 			
 			Plot plot = f.getAnnotation(Plot.class);
 			if(plot != null && obj != null){
-				plottableObjects.add(new PlottableObject(plot, obj, f.getName()));
+				plottableRefs.add(
+						new PlottableRef(
+								new PlottableObject(plot, obj, f.getName()),
+								f
+								));
 			}
 		}
 
@@ -237,7 +243,11 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 	
 	@Override
 	public List<PlottableObject> plottableObjects() {
-		return Collections.unmodifiableList(plottableObjects);
+		return Collections.unmodifiableList(
+				plottableRefs.stream()
+					.map(PlottableRef::getPO)
+					.collect(Collectors.toList()));
+		//return Collections.unmodifiableList(plottableRefs.str);
 	}
 
 	@Override

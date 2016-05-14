@@ -228,6 +228,17 @@ public class TextFileDataHandler implements IService, IDataHandler {
 									optionsPricing(msg, market, compressionRate, computedHistorical, volaEngine, options,
 											optionStep, currentBar.time, price, bidAskSpread, riskfreeRate);
 								}
+								
+								Book.Orders bid = new Book.Orders(currentBar.symbol, currentBar.time, Side.BID, 1,
+										price - bidAskSpread / 2, 100);
+								msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, bid);
+								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, bid));
+								
+								Book.Orders ask = new Book.Orders(currentBar.symbol, currentBar.time, Side.ASK, 1,
+										price + bidAskSpread / 2, 100);
+								msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, ask);
+								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, ask));
+								
 								if (i == OPEN) {
 									DTime.Clock.update(currentBar.time - compressionRate);
 									if (prevBar != null && currentBar.time / DUtils.DAY_MILLIS > prevBar.time / DUtils.DAY_MILLIS) {
@@ -247,15 +258,6 @@ public class TextFileDataHandler implements IService, IDataHandler {
 												Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarClose));
 									}
 								}
-								Book.Orders bid = new Book.Orders(currentBar.symbol, currentBar.time, Side.BID, 1,
-										price - bidAskSpread / 2, 100);
-								msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, bid);
-								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, bid));
-
-								Book.Orders ask = new Book.Orders(currentBar.symbol, currentBar.time, Side.ASK, 1,
-										price + bidAskSpread / 2, 100);
-								msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, ask);
-								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, ask));
 
 								try {
 									TimeUnit.MILLISECONDS.sleep(clockFrequency.longValue() / 2);

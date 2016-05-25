@@ -207,11 +207,18 @@ public class TextFileDataHandler implements IService, IDataHandler {
 							nextBar = null;
 						}
 						try {
+//							HIGH = (random.nextBoolean()) ? 1 : 2;
+//							LOW = (HIGH == 1) ? 2 : 1;
 							double price = currentBar.close;
 							for (int i = 0; i < 2; i++) {
 								if (i == OPEN) {
 									price = currentBar.open;
-									continue;
+//								} else if (i == HIGH) {
+//									price = currentBar.high;
+//									continue;
+//								} else if (i == LOW) {
+//									price = currentBar.low;
+//									continue;
 								} else if (i == CLOSE) {
 									price = currentBar.close;
 								}

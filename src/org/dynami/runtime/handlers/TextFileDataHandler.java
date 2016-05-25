@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
-import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -65,7 +64,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private static final SimpleDateFormat dailyShortFormat = new SimpleDateFormat(TRACK_RECORD.DAILY_SHORT_DATE_FORMAT);
 	private final AtomicBoolean isStarted = new AtomicBoolean(true);
 	private final AtomicBoolean isRunning = new AtomicBoolean(false);
-	private final Random random = new Random(1L);
+//	private final Random random = new Random(1L);
 	private final IMsg msg = Execution.Manager.msg();
 	private IVolatilityEngine volaEngine;
 	private IData historical;
@@ -189,7 +188,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
-				int OPEN = 0, HIGH = 1, LOW = 2, CLOSE = 3;
+				int OPEN = 0, CLOSE = 1;
 				Bar prevBar = null, currentBar, nextBar;
 				while (isStarted.get()) {
 					if (isRunning.get()) {
@@ -208,17 +207,10 @@ public class TextFileDataHandler implements IService, IDataHandler {
 							nextBar = null;
 						}
 						try {
-							HIGH = (random.nextBoolean()) ? 1 : 2;
-							LOW = (HIGH == 1) ? 2 : 1;
 							double price = currentBar.close;
-							for (int i = 0; i < 4; i++) {
+							for (int i = 0; i < 2; i++) {
 								if (i == OPEN) {
 									price = currentBar.open;
-								} else if (i == HIGH) {
-									price = currentBar.high;
-									continue;
-								} else if (i == LOW) {
-									price = currentBar.low;
 									continue;
 								} else if (i == CLOSE) {
 									price = currentBar.close;
@@ -242,20 +234,20 @@ public class TextFileDataHandler implements IService, IDataHandler {
 								if (i == OPEN) {
 									DTime.Clock.update(currentBar.time - compressionRate);
 									if (prevBar != null && currentBar.time / DUtils.DAY_MILLIS > prevBar.time / DUtils.DAY_MILLIS) {
-										msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol,
+										msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, DTime.Clock.getTime(),
 												currentBar, Event.Type.OnBarOpen, Event.Type.OnDayOpen));
 									} else {
 										msg.async(Topics.STRATEGY_EVENT.topic,
-												Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarOpen));
+												Event.Factory.create(currentBar.symbol, DTime.Clock.getTime(), currentBar, Event.Type.OnBarOpen));
 									}
 								} else if (i == CLOSE) {
 									DTime.Clock.update(currentBar.time);
 									if (nextBar == null || currentBar.time / DUtils.DAY_MILLIS < nextBar.time / DUtils.DAY_MILLIS) {
-										msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol,
+										msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, DTime.Clock.getTime(),
 												currentBar, Event.Type.OnBarClose, Event.Type.OnDayClose));
 									} else {
 										msg.async(Topics.STRATEGY_EVENT.topic,
-												Event.Factory.create(currentBar.symbol, currentBar, Event.Type.OnBarClose));
+												Event.Factory.create(currentBar.symbol, DTime.Clock.getTime(), currentBar, Event.Type.OnBarClose));
 									}
 								}
 

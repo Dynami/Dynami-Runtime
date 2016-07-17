@@ -99,7 +99,7 @@ public class PortfolioService implements IService, IPortfolioService {
 			openPositions.values().forEach(o->{
 				Asset.Tradable.Margin m;
 				if(o.asset instanceof Asset.Option){
-					Asset.Option opt = (Asset.Option)o.asset;
+					Asset.Option opt = o.asset.as(Asset.Option.class);
 					m = opt.margination(opt.underlyingAsset.asTradable().lastPrice(), o.quantity, o.entryPrice);
 				} else {
 					m = o.asset.margination(o.asset.lastPrice(), o.quantity);

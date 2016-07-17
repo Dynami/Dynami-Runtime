@@ -20,9 +20,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.dynami.core.Event;
+import org.dynami.core.assets.Market;
 import org.dynami.core.bus.IMsg;
 import org.dynami.core.config.Config;
 import org.dynami.core.data.IData;
+import org.dynami.core.data.IVolatilityEngine;
+import org.dynami.core.data.vola.ParkinsonVolatilityEngine;
 import org.dynami.core.services.IDataService;
 import org.dynami.core.utils.DTime;
 import org.dynami.runtime.IService;
@@ -34,6 +37,7 @@ public class DataService implements IService, IDataService  {
 	private final Map<String, BarData> data = new ConcurrentSkipListMap<>();
 	private final IMsg msg = Execution.Manager.msg();
 	private boolean initialized = false;
+	private final IVolatilityEngine engine = new ParkinsonVolatilityEngine();
 
 	@Override
 	public String id() {
@@ -65,6 +69,18 @@ public class DataService implements IService, IDataService  {
 			initialized = true;
 		}
 		return initialized;
+	}
+	
+	public double histVola(String symbol, int units){
+		Market market = Execution.Manager.dynami().assets().getMarketBySymbol(symbol);
+		return data.get(symbol).getVolatility(engine, units)
+				*engine.annualizationFactor(data.get(symbol).getCompression(), units, market);
+	}
+	
+	public double histVola(IVolatilityEngine engine, String symbol, int units){
+		Market market = Execution.Manager.dynami().assets().getMarketBySymbol(symbol);
+		return data.get(symbol).getVolatility(engine, units)
+				*engine.annualizationFactor(data.get(symbol).getCompression(), units, market);
 	}
 
 	@Override

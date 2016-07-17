@@ -64,24 +64,19 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private static final SimpleDateFormat dailyShortFormat = new SimpleDateFormat(TRACK_RECORD.DAILY_SHORT_DATE_FORMAT);
 	private final AtomicBoolean isStarted = new AtomicBoolean(true);
 	private final AtomicBoolean isRunning = new AtomicBoolean(false);
-//	private final Random random = new Random(1L);
 	private final IMsg msg = Execution.Manager.msg();
 	private IVolatilityEngine volaEngine;
 	private IData historical;
 	private BarData computedHistorical = new BarData();
-//	private Thread thread;
 	private final List<Option> options = new CopyOnWriteArrayList<>();
 
-	// @Config.Param(name="Historical Volatility Engine",
-	// description="Historical volatility engine used to price options",
-	// values={CloseToCloseVolatilityEngine.class})
 	private Class<? extends IVolatilityEngine> volaEngineClass = RogersSatchellVolatilityEngine.class;
 
 	@Config.Param(name = "Symbol", description = "Main symbol")
 	private String symbol = "FTSEMIB";
 
 	@Config.Param(name = "Clock frequency", description = "Execution speed. Set to zero for no latency.", step = 1)
-	private Long clockFrequency = 250L;
+	private Long clockFrequency = 500L;
 
 	@Config.Param(name = "Future Bid/Ask spread", description = "Bid/Ask spread expressed in points", step = 0.01)
 	private Double bidAskSpread = 5.0;
@@ -90,7 +85,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private File dataFile = new File("./resources/FTSEMIB_1M_2015_10_02.txt");//FTSEMIB_1M_2015_10_02 FTSEMIB_1M_2016_04_30
 
 	@Config.Param(name = "Time compression", description = "Compression used for time frame", min = 1, max = 100, step = 1, type = Config.Type.TimeFrame)
-	private Long compressionRate = IData.TimeUnit.Day.millis() * 1;
+	private Long compressionRate = IData.TimeUnit.Hour.millis() * 1;
 
 	@Config.Param(name = "Future Point Value", description = "Future point value", step = .1)
 	private Double futurePointValue = 5.;
@@ -99,10 +94,10 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private Double riskfreeRate = .0014;
 
 	@Config.Param(name = "Enable option pricing", description = "Activate simulated option pricing")
-	private Boolean optionPricing = false;
+	private Boolean optionPricing = true;
 
 	@Config.Param(name = "Option Strike Step", description = "Number of points between one option strike and another", step = .1)
-	private Double optionStep = 250.;
+	private Double optionStep = 500.;
 
 	@Config.Param(name = "Option Point Value", description = "Option point value", step = .1)
 	private Double optionPointValue = 2.5;
@@ -207,18 +202,10 @@ public class TextFileDataHandler implements IService, IDataHandler {
 							nextBar = null;
 						}
 						try {
-//							HIGH = (random.nextBoolean()) ? 1 : 2;
-//							LOW = (HIGH == 1) ? 2 : 1;
 							double price = currentBar.close;
 							for (int i = 0; i < 2; i++) {
 								if (i == OPEN) {
 									price = currentBar.open;
-//								} else if (i == HIGH) {
-//									price = currentBar.high;
-//									continue;
-//								} else if (i == LOW) {
-//									price = currentBar.low;
-//									continue;
 								} else if (i == CLOSE) {
 									price = currentBar.close;
 								}

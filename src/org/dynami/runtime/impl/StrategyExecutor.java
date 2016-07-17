@@ -123,7 +123,10 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 							}
 						}
 					} else if(ref.getPO().source instanceof Series){
-						plotData.addData(new PlotData.Item(ref.getPO().name, ((Series)ref.getPO().source).last()));
+						Series s = (Series)ref.getPO().source;
+						if(s.size() > 0 && !Double.isNaN(s.last())){
+							plotData.addData(new PlotData.Item(ref.getPO().keys().get(0), ((Series)ref.getPO().source).last()));
+						}
 					} else if(Integer.TYPE.isInstance(ref.getPO().source) || ref.getPO().source instanceof Integer){
 						plotData.addData(new PlotData.Item(ref.getPO().name, ref.getField().getInt(stage)));
 					} else if(Long.TYPE.isInstance(ref.getPO().source) || ref.getPO().source instanceof Long){
@@ -186,7 +189,7 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 			obj = f.get(stage);
 			if(obj != null && obj instanceof ITechnicalIndicator ){
 				techIndicators.add( (ITechnicalIndicator)obj);
-			}
+			} 
 			
 			Plot plot = f.getAnnotation(Plot.class);
 			if(plot != null && obj != null){

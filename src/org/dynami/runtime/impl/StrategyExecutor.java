@@ -227,14 +227,14 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 	}
 
 	@Override
-	public void gotoNextStage(IStage nextStage) throws Exception {
+	public void gotoNextStage(IStage nextStage) {
 		runOncePerStage(nextStage);
 //		previousStage = stage;
 		stage = nextStage;
 	}
 
 	@Override
-	public void gotoNextStageNow(IStage nextStage) throws Exception {
+	public void gotoNextStageNow(IStage nextStage) {
 		gotoNextStage(nextStage);
 		exec(lastExecutedEvent.get());
 	}

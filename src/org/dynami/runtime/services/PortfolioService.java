@@ -176,6 +176,8 @@ public class PortfolioService implements IService, IPortfolioService {
 		getOpenPositions().forEach(o->{
 			double underlyingPrice = 0 ;
 			if(o.asset.family.equals(Asset.Family.Option)){
+				((Asset.Option)o.asset).reqForQuot();
+				
 				underlyingPrice = ((Asset.Option)o.asset).underlyingAsset.asTradable().lastPrice();
 
 				double _delta = ((Asset.Option)o.asset).greeks().delta() * o.quantity * o.asset.pointValue;

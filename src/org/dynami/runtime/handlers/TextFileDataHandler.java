@@ -160,14 +160,14 @@ public class TextFileDataHandler implements IService, IDataHandler {
 						String upperOptionSymbol = DUtils.getOptionSymbol(symbol, type, expirations[j], upperStrike);
 						String lowerOptionSymbol = DUtils.getOptionSymbol(symbol, type, expirations[j], lowerStrike);
 
-						Option opt0 = createOption(market, "MIBO", ftsemib,
+						Option opt0 = createOption(this, market, "MIBO", ftsemib,
 								DUtils.getOptionName(symbol, type, expirations[j], upperStrike), upperOptionSymbol,
 								type, optionPointValue.doubleValue(), marginRequired.doubleValue(), expirations[j],
 								upperStrike);
 						msg.async(Topics.INSTRUMENT.topic, opt0);
 						options.add(opt0);
 
-						Option opt1 = createOption(market, "MIBO", ftsemib,
+						Option opt1 = createOption(this, market, "MIBO", ftsemib,
 								DUtils.getOptionName(symbol, type, expirations[j], lowerStrike), lowerOptionSymbol,
 								type, optionPointValue.doubleValue(), marginRequired.doubleValue(), expirations[j],
 								lowerStrike);
@@ -295,6 +295,30 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		System.out.println("TextFileDataHandler.dispose()");
 		return true;
 	}
+	
+	public boolean priceOption(Option o){
+		if(!optionPricing) return false;
+		
+		final long time = DTime.Clock.getTime();
+		final int daysLeft = o.daysToExpiration(time);
+		final double spot = o.underlyingAsset.asTradable().lastPrice();
+		
+		final int strikesFromAtm = 1+(int)(Math.abs(spot - o.strike) / optionStep);
+		final double vola = o.getVolatility();
+		
+		final double optBidPrice = EuropeanBlackScholes.price(o.type, (spot - ((bidAskSpread / 2) * strikesFromAtm)),
+				o.strike, vola, (double) daysLeft / DUtils.YEAR_DAYS, riskfreeRate);
+		final double optAskPrice = EuropeanBlackScholes.price(o.type, (spot + ((bidAskSpread / 2) * strikesFromAtm)),
+				o.strike, vola, (double) daysLeft / DUtils.YEAR_DAYS, riskfreeRate);
+		
+		Book.Orders bid = new Book.Orders(o.symbol, time, Side.BID, 1, optBidPrice, 100);
+		msg.sync(Topics.BID_ORDERS_BOOK_PREFIX.topic + o.symbol, bid);
+		
+		Book.Orders ask = new Book.Orders(o.symbol, time, Side.ASK, 1, optAskPrice, 100);
+		msg.sync(Topics.ASK_ORDERS_BOOK_PREFIX.topic + o.symbol, ask);
+		
+		return true;
+	}
 
 	private static void optionsPricing(final IMsg msg, final Market market, final long compresssionRate,
 			final BarData data, final IVolatilityEngine volaEngine, final List<Option> options, final double optionStep,
@@ -307,7 +331,9 @@ public class TextFileDataHandler implements IService, IDataHandler {
 			int daysLeft = o.daysToExpiration(time);
 //			int daysLeft = 20;
 			int strikesFromAtm = 1+(int)(Math.abs(spot - o.strike) / optionStep);
-
+			
+			if(strikesFromAtm>4) return;
+			
 			final double factor = volaEngine.annualizationFactor(compresssionRate, daysLeft, market);
 			final double vola = data.getVolatility(volaEngine, daysLeft) * factor;
 
@@ -320,11 +346,11 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 				Book.Orders bid = new Book.Orders(o.symbol, time, Side.BID, 1, optBidPrice, 100);
 				msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + o.symbol, bid);
-				msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(o.symbol, bid));
+//				msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(o.symbol, bid));
 
 				Book.Orders ask = new Book.Orders(o.symbol, time, Side.ASK, 1, optAskPrice, 100);
 				msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + o.symbol, ask);
-				msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(o.symbol, ask));
+//				msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(o.symbol, ask));
 			}
 		}
 	}
@@ -495,7 +521,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 		this.optionPricing = optionPricing;
 	}
 
-	public static Asset.Option createOption(Market market, String prefix, Asset parent, String name, String isin,
+	public static Asset.Option createOption(TextFileDataHandler dataHandler, Market market, String prefix, Asset parent, String name, String isin,
 			Option.Type type, double pointValue, double margin, long expire, double strike) throws Exception {
 
 		return new Asset.Option(DUtils.getOptionSymbol(prefix, type, expire, strike), isin,
@@ -504,7 +530,8 @@ public class TextFileDataHandler implements IService, IDataHandler {
 														// provider
 				strike, type, Asset.Option.Exercise.European, new JQuantLibUtils.GreeksEngine(),
 				BSEurOptionsUtils.implVola,
-				EuropeanBlackScholes.OptionPricingEngine);
+				EuropeanBlackScholes.OptionPricingEngine,
+				dataHandler::priceOption);
 	}
 
 	/**

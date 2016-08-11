@@ -112,4 +112,9 @@ public class DataService implements IService, IDataService  {
 				.getPeriod(from.getTime(), (to != null)?to.getTime():DTime.Clock.getTime())
 				.changeCompression(timeFrame*units);
 	}
+	
+	@Override
+	public IData history(String symbol, int last) {
+		return history(symbol).getLastBars(last);
+	}
 }

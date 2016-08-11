@@ -15,15 +15,14 @@
  */
 package org.dynami.runtime.handlers;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
+import java.util.Scanner;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -215,13 +214,11 @@ public class TextFileDataHandler implements IService, IDataHandler {
 											optionStep, currentBar.time, price, bidAskSpread, riskfreeRate);
 								}
 								
-								Book.Orders bid = new Book.Orders(currentBar.symbol, currentBar.time, Side.BID, 1,
-										price - bidAskSpread / 2, 100);
+								Book.Orders bid = new Book.Orders(currentBar.symbol, currentBar.time, Side.BID, 1, price - bidAskSpread / 2, 100);
 								msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, bid);
 								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, bid));
 								
-								Book.Orders ask = new Book.Orders(currentBar.symbol, currentBar.time, Side.ASK, 1,
-										price + bidAskSpread / 2, 100);
+								Book.Orders ask = new Book.Orders(currentBar.symbol, currentBar.time, Side.ASK, 1, price + bidAskSpread / 2, 100);
 								msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, ask);
 								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, ask));
 								
@@ -332,7 +329,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 //			int daysLeft = 20;
 			int strikesFromAtm = 1+(int)(Math.abs(spot - o.strike) / optionStep);
 			
-			if(strikesFromAtm>4) return;
+//			if(strikesFromAtm>6) return;
 			
 			final double factor = volaEngine.annualizationFactor(compresssionRate, daysLeft, market);
 			final double vola = data.getVolatility(volaEngine, daysLeft) * factor;
@@ -357,14 +354,16 @@ public class TextFileDataHandler implements IService, IDataHandler {
 
 	private BarData restorePriceData(final File f) throws Exception {
 		SimpleDateFormat dateParser = null;
-		BufferedReader reader = null;
+//		BufferedReader reader = null;
+		Scanner scanner = new Scanner(f);
 		try {
 			String[] tmp = null;
-			reader = new BufferedReader(new FileReader(f));
+//			reader = new BufferedReader(new FileReader(f));
 			String line = null;
 			boolean isFirst = true;
 			BarData barData = new BarData();
-			while ((line = reader.readLine()) != null) {
+			while (scanner.hasNextLine()) {
+				line = scanner.nextLine();
 				if (isFirst) {
 					isFirst = false;
 					continue;
@@ -388,8 +387,9 @@ public class TextFileDataHandler implements IService, IDataHandler {
 			e.printStackTrace();
 			return null;
 		} finally {
-			if (reader != null)
-				reader.close();
+			scanner.close();
+//			if (reader != null)
+//				reader.close();
 		}
 	}
 

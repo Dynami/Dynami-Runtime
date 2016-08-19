@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Alessandro Atria - a.atria@gmail.com
+ù * Copyright 2015 Alessandro Atria - a.atria@gmail.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private File dataFile = new File("./resources/FTSEMIB_1M_2015_10_02.txt");//FTSEMIB_1M_2015_10_02 FTSEMIB_1M_2016_04_30
 
 	@Config.Param(name = "Time compression", description = "Compression used for time frame", min = 1, max = 100, step = 1, type = Config.Type.TimeFrame)
-	private Long compressionRate = IData.TimeUnit.Hour.millis() * 1;
+	private Long compressionRate = IData.TimeUnit.Day.millis() * 1;
 
 	@Config.Param(name = "Future Point Value", description = "Future point value", step = .1)
 	private Double futurePointValue = 5.;
@@ -530,8 +530,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 														// provider
 				strike, type, Asset.Option.Exercise.European, new JQuantLibUtils.GreeksEngine(),
 				BSEurOptionsUtils.implVola,
-				EuropeanBlackScholes.OptionPricingEngine,
-				dataHandler::priceOption);
+				EuropeanBlackScholes.OptionPricingEngine /*,dataHandler::priceOption*/);
 	}
 
 	/**

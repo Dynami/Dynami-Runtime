@@ -100,6 +100,7 @@ public class PortfolioService implements IService, IPortfolioService {
 				Asset.Tradable.Margin m;
 				if(o.asset instanceof Asset.Option){
 					Asset.Option opt = o.asset.as(Asset.Option.class);
+					opt.reqForQuot();
 					m = opt.margination(opt.underlyingAsset.asTradable().lastPrice(), o.quantity, o.entryPrice);
 				} else {
 					m = o.asset.margination(o.asset.lastPrice(), o.quantity);

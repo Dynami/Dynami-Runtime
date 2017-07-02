@@ -75,9 +75,13 @@ public enum Msg implements IMsg {
 		}
 	}
 
+	@SuppressWarnings("unlikely-arg-type")
 	@Override
 	public void unsubscribe(String topic, Handler handler) {
-		topics.get(topic).subscribers.remove(handler);
+		TopicHandler th = topics.get(topic);
+		if(th != null) {
+			th.subscribers.remove(handler);
+		}
 	}
 
 	@Override

@@ -79,23 +79,25 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 	@Override
 	public boolean init(Config config) throws Exception {
 //		volaEngine = volaEngineClass.newInstance();
-		
 		if(!databaseFile.exists()){
-			Execution.Manager.msg().async(Topics.INTERNAL_ERRORS.topic, new IllegalStateException("File ["+databaseFile.getAbsolutePath()+"] doesn't exist"));
+			Execution.Manager.msg().async(Topics.INTERNAL_ERRORS.topic, new IllegalStateException("File ["+databaseFile.getPath()+"] doesn't exist"));
 			return false;
 		}
-		DAO.Sqlite.use(databaseFile.getAbsolutePath());
+		DAO.Sqlite.use(databaseFile);
 		
 		msg.forceSync(true);
 		final AtomicLong prevTime = new AtomicLong(0);
 		final Market market = new Market("IDEM", "IDEM", Locale.ITALY, LocalTime.of(9, 0, 0), LocalTime.of(17, 25, 0));
 		final Asset.Index index = new Asset.Index(Asset.Family.Index, "^FTSEMIB", "IT0000000001", "FTSEMIB Index", 1, .01, market);
+		
 		final TrasiAsset.Future fut = DAO.Sqlite.first(new Criteria<>(TrasiAsset.Future.class).andEqualsGreaterThan("expire", expire).orderBy("expire"));
+		
 		final List<TrasiAsset.Option> options = DAO.Sqlite.select(new Criteria<>(TrasiAsset.Option.class).andEquals("expire", expire));
+		
 		final List<DAOPrimitives.Long> times = DAO.Sqlite.select(
 				DAOPrimitives.Long.class, 
-				" select distinct ob.time "
-				+ "from option_bars ob , options o "
+				" select distinct ob.time as 'value' "
+				+ "from book ob , options o "
 				+ "where o.expire = ? "
 				+ "and o.ticker = ob.ticker ", 
 				expire);
@@ -104,7 +106,7 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 		 * TODO initialize futures and options
 		 */
 		final Asset.Future future = new Asset.Future(fut.getTicker(), fut.getIsin(), fut.getName(), fut.getPointValue(), .05, marginRequired, LastPriceEngine.MidPrice, market, fut.getExpire().getTime(), 1L, index, () -> 1.);
-		msg.async(Topics.INSTRUMENT.topic, future);
+		msg.sync(Topics.INSTRUMENT.topic, future);
 
 		for(TrasiAsset.Option opt : options) {
 			final Asset.Option option = new Asset.Option(opt.getTicker(), opt.getIsin(), opt.getName(), opt.getPointValue(), .05, marginRequired, LastPriceEngine.MidPrice, 
@@ -112,7 +114,7 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 					1L, future, () -> riskfreeRate, opt.getStrike(), 
 					(opt.getOptionType().equals(TrasiAsset.Option.Type.CALL.toString()))?Asset.Option.Type.CALL:Asset.Option.Type.PUT, 
 					Asset.Option.Exercise.European,  new JQuantLibUtils.GreeksEngine(), BSEurOptionsUtils.implVola, EuropeanBlackScholes.OptionPricingEngine);
-			msg.async(Topics.INSTRUMENT.topic, option);
+			msg.sync(Topics.INSTRUMENT.topic, option);
 		}
 		
 		new Thread(new Runnable() {
@@ -128,6 +130,7 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 							}
 							final long time = times.get(idx.getAndIncrement()).getValue();
 							final TrasiBookSpot fBook = DAO.Sqlite.first(new Criteria<>(TrasiBookSpot.class).andEquals("ticker", fut.getTicker()).andEquals("time", time));
+							
 							double fPrice = fBook.avgPrice(); 
 							
 							DTime.Clock.update(time);
@@ -148,13 +151,17 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 							 */
 							for(TrasiAsset.Option opt : options) {
 								final TrasiBookSpot oBook = DAO.Sqlite.first(new Criteria<>(TrasiBookSpot.class).andEquals("ticker", opt.getTicker()).andEquals("time", time));
-								Book.Orders oBid = new Book.Orders(oBook.ticker, time, Side.BID, 1, oBook.bid, oBook.bidVolume);
-								msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + oBook.ticker, oBid);
-								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(oBook.ticker, oBid));
+								if(oBook != null && oBook.bid > 0) {
+									Book.Orders oBid = new Book.Orders(oBook.ticker, time, Side.BID, 1, oBook.bid, oBook.bidVolume);
+									msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + oBook.ticker, oBid);
+									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(oBook.ticker, oBid));
+								}
 //								
-								Book.Orders oAsk = new Book.Orders(oBook.ticker, time, Side.ASK, 1, oBook.ask, oBook.askVolume);
-								msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + oBook.ticker, oAsk);
-								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(oBook.ticker, oAsk));
+								if(oBook != null && oBook.ask > 0) {
+									Book.Orders oAsk = new Book.Orders(oBook.ticker, time, Side.ASK, 1, oBook.ask, oBook.askVolume);
+									msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + oBook.ticker, oAsk);
+									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(oBook.ticker, oAsk));
+								}
 							}
 							
 							/**

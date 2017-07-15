@@ -62,7 +62,7 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 	@Config.Param(name = "Riskfree Rate", description = "Risk free rate", step =.0001, min=0.000, max=1.)
 	private Double riskfreeRate = .0014;
 
-	@Config.Param(name = "% Margin required", description = "Margination required in percentage points", step = .1)
+	@Config.Param(name = "% Margin required", description = "Margination required in percentage points", step = .001)
 	private Double marginRequired = .125;
 
 	@Override

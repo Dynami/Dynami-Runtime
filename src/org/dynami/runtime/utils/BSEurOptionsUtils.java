@@ -22,7 +22,7 @@ import org.dynami.core.utils.DUtils;
 import org.dynami.runtime.impl.Execution;
 
 public class BSEurOptionsUtils {
-	private static final double ACCURACY = 0.0001;
+	private static final double ACCURACY = 0.001;
 	
 	public static Greeks.ImpliedVolatility implVola = new Greeks.ImpliedVolatility() {
 		

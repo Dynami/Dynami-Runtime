@@ -2,18 +2,20 @@ package org.dynami.runtime.handlers;
 
 import java.io.File;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
+import org.atria.dao.Criteria;
+import org.atria.dao.DAO;
+import org.atria.dao.DAOPrimitives;
+import org.atria.dao.IEntity;
+import org.atria.dao.IField;
 import org.dynami.core.Event;
 import org.dynami.core.assets.Asset;
-import org.dynami.core.assets.Asset.Option;
 import org.dynami.core.assets.Book;
 import org.dynami.core.assets.Book.Side;
 import org.dynami.core.assets.Market;
@@ -27,7 +29,6 @@ import org.dynami.core.utils.DTime;
 import org.dynami.core.utils.DUtils;
 import org.dynami.runtime.IDataHandler;
 import org.dynami.runtime.IService;
-import org.dynami.runtime.data.BarData;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 import org.dynami.runtime.utils.BSEurOptionsUtils;
@@ -41,11 +42,6 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 	private final AtomicBoolean isStarted = new AtomicBoolean(true);
 	private final AtomicBoolean isRunning = new AtomicBoolean(false);
 	private final IMsg msg = Execution.Manager.msg();
-	private IVolatilityEngine volaEngine;
-	private IData historical;
-	private BarData computedHistorical = new BarData();
-	private final List<Option> options = new CopyOnWriteArrayList<>();
-
 	private Class<? extends IVolatilityEngine> volaEngineClass = RogersSatchellVolatilityEngine.class;
 
 	@Config.Param(name = "Symbol", description = "Main symbol")
@@ -55,10 +51,13 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 	private Long clockFrequency = 500L;
 
 	@Config.Param(name = "DB file", description = "SQLite3 database file")
-	private File databaseFile = new File("./resources/FTSEMIB_1M_2015_10_02.txt");
+	private File databaseFile = new File("/Users/Dacia/Documents/02.Ale/workspace/trasi-data-test/trasy-daily.db");
+	
+	@Config.Param(name = "Option Expire", description = "Select options from expiring date")
+	private Date expire;
 
 	@Config.Param(name = "Time compression", description = "Compression used for time frame", min = 1, max = 100, step = 1, type = Config.Type.TimeFrame)
-	private Long compressionRate = IData.TimeUnit.Minute.millis() * 1;
+	private Long compressionRate = IData.TimeUnit.Minute.millis() * 5;
 
 	@Config.Param(name = "Riskfree Rate", description = "Risk free rate", step =.0001, min=0.000, max=1.)
 	private Double riskfreeRate = .0014;
@@ -74,120 +73,113 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 	@Override
 	public boolean reset() {
 		idx.set(0);
-		computedHistorical = new BarData();
 		return true;
 	}
 
 	@Override
 	public boolean init(Config config) throws Exception {
+//		volaEngine = volaEngineClass.newInstance();
+		
 		if(!databaseFile.exists()){
 			Execution.Manager.msg().async(Topics.INTERNAL_ERRORS.topic, new IllegalStateException("File ["+databaseFile.getAbsolutePath()+"] doesn't exist"));
 			return false;
 		}
-		volaEngine = volaEngineClass.newInstance();
-		/**
-		 * Read data from sqlite
-		 */
-		historical = null;//restorePriceData(databaseFile);
-		historical.setAutoCompressionRate();
-		historical = historical.changeCompression(compressionRate);
-
+		DAO.Sqlite.use(databaseFile.getAbsolutePath());
+		
 		msg.forceSync(true);
-
-		Market market = new Market("IDEM", "IDEM", Locale.ITALY, LocalTime.of(9, 0, 0), LocalTime.of(17, 25, 0));
-
-		Asset.Index index = new Asset.Index(Asset.Family.Index, "^FTSEMIB", "IT0000000001", "FTSEMIB Index", 1, .01, market);
-
+		final AtomicLong prevTime = new AtomicLong(0);
+		final Market market = new Market("IDEM", "IDEM", Locale.ITALY, LocalTime.of(9, 0, 0), LocalTime.of(17, 25, 0));
+		final Asset.Index index = new Asset.Index(Asset.Family.Index, "^FTSEMIB", "IT0000000001", "FTSEMIB Index", 1, .01, market);
+		final TrasiAsset.Future fut = DAO.Sqlite.first(new Criteria<>(TrasiAsset.Future.class).andEqualsGreaterThan("expire", expire).orderBy("expire"));
+		final List<TrasiAsset.Option> options = DAO.Sqlite.select(new Criteria<>(TrasiAsset.Option.class).andEquals("expire", expire));
+		final List<DAOPrimitives.Long> times = DAO.Sqlite.select(
+				DAOPrimitives.Long.class, 
+				" select distinct ob.time "
+				+ "from option_bars ob , options o "
+				+ "where o.expire = ? "
+				+ "and o.ticker = ob.ticker ", 
+				expire);
+		
 		/**
 		 * TODO initialize futures and options
 		 */
-		//msg.async(Topics.INSTRUMENT.topic, ftsemib);
+		final Asset.Future future = new Asset.Future(fut.getTicker(), fut.getIsin(), fut.getName(), fut.getPointValue(), .05, marginRequired, LastPriceEngine.MidPrice, market, fut.getExpire().getTime(), 1L, index, () -> 1.);
+		msg.async(Topics.INSTRUMENT.topic, future);
 
+		for(TrasiAsset.Option opt : options) {
+			final Asset.Option option = new Asset.Option(opt.getTicker(), opt.getIsin(), opt.getName(), opt.getPointValue(), .05, marginRequired, LastPriceEngine.MidPrice, 
+					market, opt.getExpire().getTime(), 
+					1L, future, () -> riskfreeRate, opt.getStrike(), 
+					(opt.getOptionType().equals(TrasiAsset.Option.Type.CALL.toString()))?Asset.Option.Type.CALL:Asset.Option.Type.PUT, 
+					Asset.Option.Exercise.European,  new JQuantLibUtils.GreeksEngine(), BSEurOptionsUtils.implVola, EuropeanBlackScholes.OptionPricingEngine);
+			msg.async(Topics.INSTRUMENT.topic, option);
+		}
 		
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
-				int OPEN = 0, CLOSE = 1;
-				Bar prevBar = null, currentBar, nextBar;
 				while (isStarted.get()) {
 					if (isRunning.get()) {
-						
-						if (idx.get() >= historical.size()) {
-							System.out.println("No more data!!! Give X or XX command to print final status");
-							msg.sync(Topics.STRATEGY_EVENT.topic, Event.Factory.noMoreDataEvent(symbol));
-							break;
-						}
-						currentBar = historical.get(idx.getAndIncrement());
-						computedHistorical.append(currentBar);
-
-						if (historical.size() > idx.get()) {
-							nextBar = historical.get(idx.get());
-						} else {
-							nextBar = null;
-						}
 						try {
-							double price = currentBar.close;
-							for (int i = 0; i < 2; i++) {
-								if (i == OPEN) {
-									price = currentBar.open;
-								} else if (i == CLOSE) {
-									price = currentBar.close;
-								}
-								
-								/**
-								 * Fire book prices for futures
-								 */
-								
-								Book.Orders bid = new Book.Orders(currentBar.symbol, currentBar.time, Side.BID, 1, price, 100);
-								msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, bid);
-								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, bid));
-								
-								Book.Orders ask = new Book.Orders(currentBar.symbol, currentBar.time, Side.ASK, 1, price, 100);
-								msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, ask);
-								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, ask));
-								
-								
-								/**
-								 * Fire book prices for options
-								 */
-								
-								if (i == OPEN) {
-									DTime.Clock.update(currentBar.time - compressionRate);
-									if (prevBar != null && currentBar.time / DUtils.DAY_MILLIS > prevBar.time / DUtils.DAY_MILLIS) {
-										msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, DTime.Clock.getTime(),
-												currentBar, Event.Type.OnBarOpen, Event.Type.OnDayOpen));
-									} else {
-										msg.async(Topics.STRATEGY_EVENT.topic,
-												Event.Factory.create(currentBar.symbol, DTime.Clock.getTime(), currentBar, Event.Type.OnBarOpen));
-									}
-								} else if (i == CLOSE) {
-									DTime.Clock.update(currentBar.time);
-									if (nextBar == null || currentBar.time / DUtils.DAY_MILLIS < nextBar.time / DUtils.DAY_MILLIS) {
-										msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, DTime.Clock.getTime(),
-												currentBar, Event.Type.OnBarClose, Event.Type.OnDayClose));
-									} else {
-										msg.async(Topics.STRATEGY_EVENT.topic,
-												Event.Factory.create(currentBar.symbol, DTime.Clock.getTime(), currentBar, Event.Type.OnBarClose));
-									}
-								}
+							if (idx.get() >= times.size()) {
+								System.out.println("No more data!!! Give X or XX command to print final status");
+								msg.sync(Topics.STRATEGY_EVENT.topic, Event.Factory.noMoreDataEvent(symbol));
+								break;
+							}
+							final long time = times.get(idx.getAndIncrement()).getValue();
+							final TrasiBookSpot fBook = DAO.Sqlite.first(new Criteria<>(TrasiBookSpot.class).andEquals("ticker", fut.getTicker()).andEquals("time", time));
+							double fPrice = fBook.avgPrice(); 
+							
+							DTime.Clock.update(time);
+							
+							/**
+							 * Fire book prices for futures
+							 */
+							Book.Orders fBid = new Book.Orders(fBook.ticker, time, Side.BID, 1, fBook.bid, fBook.bidVolume);
+							msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + fBook.ticker, fBid);
+							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(fBook.ticker, fBid));
+							
+							Book.Orders fAsk = new Book.Orders(fBook.ticker, time, Side.ASK, 1, fBook.ask, fBook.askVolume);
+							msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + fBook.ticker, fAsk);
+							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(fBook.ticker, fAsk));
 
-								try {
-									TimeUnit.MILLISECONDS.sleep(clockFrequency.longValue()/2);
-								} catch (InterruptedException e) {}
+							/**
+							 * Fire book prices for options
+							 */
+							for(TrasiAsset.Option opt : options) {
+								final TrasiBookSpot oBook = DAO.Sqlite.first(new Criteria<>(TrasiBookSpot.class).andEquals("ticker", opt.getTicker()).andEquals("time", time));
+								Book.Orders oBid = new Book.Orders(oBook.ticker, time, Side.BID, 1, oBook.bid, oBook.bidVolume);
+								msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + oBook.ticker, oBid);
+								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(oBook.ticker, oBid));
+//								
+								Book.Orders oAsk = new Book.Orders(oBook.ticker, time, Side.ASK, 1, oBook.ask, oBook.askVolume);
+								msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + oBook.ticker, oAsk);
+								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(oBook.ticker, oAsk));
 							}
 							
-						} catch(RuntimeException e){
+							/**
+							 * Fire strategy on bar close events
+							 */
+							final Bar current = new Bar(fBook.ticker, fPrice, fPrice, fPrice, fPrice, 0, time);
+							if (prevTime.get() == 0 || time / DUtils.DAY_MILLIS < prevTime.get() / DUtils.DAY_MILLIS) {
+								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(fBook.ticker, DTime.Clock.getTime(),
+										current, Event.Type.OnBarClose, Event.Type.OnDayClose));
+							} else {
+								msg.async(Topics.STRATEGY_EVENT.topic,
+										Event.Factory.create(fBook.ticker, DTime.Clock.getTime(), current, Event.Type.OnBarClose));
+							}
+								
+							prevTime.set(time);
+						} catch(Exception e){
 							Execution.Manager.msg().async(Topics.INTERNAL_ERRORS.topic, e);
 						}
-						
-						prevBar = currentBar;
 					} else {
 						try { Thread.sleep(clockFrequency.longValue()); } catch (InterruptedException e) {}
 					}
 				}
-				System.out.println("TextFileDataHandler.init() closing TextFileDataHandler thread");
+				System.out.println("TrasiIntradayDataHandler.init() closing TextFileDataHandler thread");
 			}
-		}, "TextFileDataHandler").start();
+		}, "TrasiIntradayDataHandler").start();
 		return true;
 	}
 
@@ -218,7 +210,7 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 	public boolean dispose() {
 		isStarted.set(false);
 		isRunning.set(false);
-		System.out.println("TextFileDataHandler.dispose()");
+		System.out.println("TrasiIntradayDataHandler.dispose()");
 		return true;
 	}
 	
@@ -267,50 +259,198 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 		this.marginRequired = marginRequired;
 	}
 
-	public static Asset.Option createOption(TextFileDataHandler dataHandler, Market market, String prefix, Asset parent, String name, String isin,
-			Option.Type type, double pointValue, double margin, long expire, double strike) throws Exception {
+	public static abstract class TrasiAsset {
+		@IField(pk=true, lenght=30) 
+		private String ticker;
+		
+		@IField(lenght=50)
+		private String name;
+		
+		@IField(nullable=false, lenght=30) 
+		private String isin;
+		
+		private String type;
+		
+		@IField(name="point_value", nullable=false, defaultValue="1") 
+		private double pointValue;
+		
+		public static enum Type {Option, Future, MiniFuture}
 
-		return new Asset.Option(DUtils.getOptionSymbol(prefix, type, expire, strike), isin,
-				DUtils.getOptionName(prefix, type, expire, strike), pointValue, .05, margin, LastPriceEngine.MidPrice,
-				market, expire, 1L, parent, () -> 0., // fake risk free rate
-														// provider
-				strike, type, Asset.Option.Exercise.European, new JQuantLibUtils.GreeksEngine(),
-				BSEurOptionsUtils.implVola,
-				EuropeanBlackScholes.OptionPricingEngine /*,dataHandler::priceOption*/);
-	}
-
-	/**
-	 * Get expiration dates (third Friday of each month) in the date interval.
-	 * @param start
-	 * @param end
-	 */
-	private static long[] computeExpirationInPeriod(long start, long end) {
-		Calendar cal = Calendar.getInstance();
-		cal.setTimeInMillis(start);
-		cal.set(Calendar.DAY_OF_MONTH, 1);
-		List<Long> expires = new ArrayList<>();
-		int dayOfWeek;
-		int currentMonth = cal.get(Calendar.MONTH);
-		int countFriday = 0;
-		while (cal.getTimeInMillis() <= end) {
-			dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
-			if (currentMonth != cal.get(Calendar.MONTH)) {
-				countFriday = 0;
-				currentMonth = cal.get(Calendar.MONTH);
-			}
-
-			if (dayOfWeek % Calendar.FRIDAY == 0) {
-				++countFriday;
-				if (countFriday == 3) {
-					expires.add(cal.getTimeInMillis());
-				}
-			}
-			cal.add(Calendar.DAY_OF_MONTH, 1);
+		public String getName() {
+			return name;
 		}
-		return expires.stream()
-				.mapToLong(Long::longValue)
-				.filter((o) -> o >= start)
-				.toArray();
+		
+		public void setName(String name) {
+			this.name = name;
+		}
+		
+		public String getTicker() {
+			return ticker;
+		}
+
+		public void setTicker(String ticker) {
+			this.ticker = ticker;
+		}
+
+		public String getIsin() {
+			return isin;
+		}
+
+		public void setIsin(String isin) {
+			this.isin = isin;
+		}
+
+		public String getType() {
+			return type;
+		}
+
+		void setType(String type) {
+			this.type = type;
+		}
+
+		public double getPointValue() {
+			return pointValue;
+		}
+
+		public void setPointValue(double pointValue) {
+			this.pointValue = pointValue;
+		}
+		
+		private static abstract class Derivative extends TrasiAsset {
+			@IField(nullable=false) 
+			private Date expire;
+			
+			public Date getExpire() {
+				return expire;
+			}
+			
+			public void setExpire(Date expire) {
+				this.expire = expire;
+			}
+		}
+		
+		@IEntity(name="options")
+		public static class Option extends Derivative {
+			{setType(TrasiAsset.Type.Option.name());}
+			
+			@IField(name="type", nullable=false, lenght=5) 
+			private String optionType;
+			
+			@IField(nullable=false) 
+			private double strike;
+			
+			public String getOptionType() {
+				return optionType;
+			}
+			
+			public void setOptionType(String optionType) {
+				this.optionType = optionType;
+			}
+			
+			public double getStrike() {
+				return strike;
+			}
+			
+			public void setStrike(double strike) {
+				this.strike = strike;
+			}
+			
+			public static enum Type {PUT, CALL}
+
+			@Override
+			public String toString() {
+				return "Option [optionType=" + optionType + ", strike=" + strike + ", getExpire()=" + getExpire()
+						+ ", getName()=" + getName() + ", getTicker()=" + getTicker() + ", getIsin()=" + getIsin()
+						+ ", getType()=" + getType() + ", getPointValue()=" + getPointValue()
+						+ "]";
+			};
+		}
+		
+		@IEntity(name="futures")
+		public static class Future extends Derivative {
+			{setType(TrasiAsset.Type.Future.name());}
+		}
 	}
 
+	@IEntity(name="book")
+	public static class TrasiBookSpot {
+		@IField(pk=true) 
+		private String ticker;
+		
+		@IField(pk=true) 
+		private Date time;
+		
+		@IField(defaultValue="0.0") 
+		private double bid;
+		
+		@IField(defaultValue="0.0") 
+		private double ask;
+
+		@IField(name="bid_qt", defaultValue="0") 
+		private int bidVolume;
+		
+		@IField(name="ask_qt", defaultValue="0") 
+		private int askVolume;
+		
+		public String getTicker() {
+			return ticker;
+		}
+
+		public void setTicker(String ticker) {
+			this.ticker = ticker;
+		}
+
+		public Date getTime() {
+			return time;
+		}
+
+		public void setTime(Date time) {
+			this.time = time;
+		}
+
+		public double getBid() {
+			return bid;
+		}
+
+		public void setBid(double bid) {
+			this.bid = bid;
+		}
+
+		public double getAsk() {
+			return ask;
+		}
+
+		public void setAsk(double ask) {
+			this.ask = ask;
+		}
+
+		public int getBidVolume() {
+			return bidVolume;
+		}
+
+		public void setBidVolume(int bidVolume) {
+			this.bidVolume = bidVolume;
+		}
+
+		public int getAskVolume() {
+			return askVolume;
+		}
+
+		public void setAskVolume(int askVolume) {
+			this.askVolume = askVolume;
+		}
+		
+		public double avgPrice() {
+			if(ask != 0 && bid != 0) {
+				return (ask+bid)/2;
+			} else if(ask != 0 ) {
+				return ask;
+			} else if(bid != 0) {
+				return bid;
+			} else {
+				return 0;
+			}
+		}
+	}
+	
 }

@@ -150,7 +150,7 @@ public class JQuantLibUtils {
 			if(vola > 0){
 				double underlyingPrice = Execution.Manager.dynami().assets().getBySymbol(underlyingSymbol).asTradable().lastPrice();
 				
-				System.out.println("JQuantLibUtils.GreeksEngine.evaluate()underlyingPrice: "+underlyingPrice);
+//				System.out.println("JQuantLibUtils.GreeksEngine.evaluate()underlyingPrice: "+underlyingPrice);
 				((SimpleQuote)volaH.currentLink()).setValue(vola);
 				((SimpleQuote)interestRateH.currentLink()).setValue(interestRate);
 				((SimpleQuote)lastH.currentLink()).setValue(underlyingPrice);

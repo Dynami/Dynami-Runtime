@@ -36,7 +36,8 @@ import org.dynami.runtime.utils.EuropeanBlackScholes;
 import org.dynami.runtime.utils.JQuantLibUtils;
 import org.dynami.runtime.utils.LastPriceEngine;
 
-public class TrasiIntradayDataHandler implements IService, IDataHandler {
+@Config.Settings(description="Parameters for executing stored trasi test data")
+public class TrasiTestDataHandler implements IService, IDataHandler {
 
 	private final AtomicInteger idx = new AtomicInteger(0);
 	private final AtomicBoolean isStarted = new AtomicBoolean(true);
@@ -51,9 +52,12 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 	private Long clockFrequency = 500L;
 
 	@Config.Param(name = "DB file", description = "SQLite3 database file")
-	private File databaseFile = new File("/Users/Dacia/Documents/02.Ale/workspace/trasi-data-test/trasy-daily.db");
+	private File databaseFile = new File("/Users/Dacia/Documents/02.Ale/workspace/trasi-data-test/trasi-data-test.db");
 	
-	@Config.Param(name = "Option Expire", description = "Select options from expiring date")
+	@Config.Param(name="Starting date", description="Starting date for strategy")
+	private Date startFrom;
+	
+	@Config.Param(name = "Option Expire Date", description = "Select option chain")
 	private Date expire;
 
 	@Config.Param(name = "Time compression", description = "Compression used for time frame", min = 1, max = 100, step = 1, type = Config.Type.TimeFrame)
@@ -99,8 +103,9 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 				" select distinct ob.time as 'value' "
 				+ "from book ob , options o "
 				+ "where o.expire = ? "
-				+ "and o.ticker = ob.ticker ", 
-				expire);
+				+ "and o.ticker = ob.ticker "
+				+ "and ob.time >= ?", 
+				expire, startFrom);
 		
 		/**
 		 * TODO initialize futures and options
@@ -134,6 +139,8 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 							double fPrice = fBook.avgPrice(); 
 							
 							DTime.Clock.update(time);
+							// if no future price available skip elaboration
+							if(fPrice == 0) continue;
 							
 							/**
 							 * Fire book prices for futures
@@ -184,9 +191,9 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 						try { Thread.sleep(clockFrequency.longValue()); } catch (InterruptedException e) {}
 					}
 				}
-				System.out.println("TrasiIntradayDataHandler.init() closing TextFileDataHandler thread");
+				System.out.println("TrasiTestDataHandler::init() closing TextFileDataHandler thread");
 			}
-		}, "TrasiIntradayDataHandler").start();
+		}, "TrasiTestDataHandler").start();
 		return true;
 	}
 
@@ -217,7 +224,7 @@ public class TrasiIntradayDataHandler implements IService, IDataHandler {
 	public boolean dispose() {
 		isStarted.set(false);
 		isRunning.set(false);
-		System.out.println("TrasiIntradayDataHandler.dispose()");
+		System.out.println("TrasiTestDataHandler.dispose()");
 		return true;
 	}
 	

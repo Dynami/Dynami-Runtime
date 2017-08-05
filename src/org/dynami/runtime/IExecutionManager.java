@@ -81,6 +81,7 @@ public interface IExecutionManager {
 	 * @return
 	 */
 	public boolean load();
+	
 
 	/**
 	 * Starts strategy execution
@@ -184,6 +185,7 @@ public interface IExecutionManager {
 		Selected,
 		Initialized,
 		Loaded,
+		StartedUp,
 		Running,
 		Paused,
 		Stopped

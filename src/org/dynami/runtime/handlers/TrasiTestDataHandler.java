@@ -1,6 +1,7 @@
 package org.dynami.runtime.handlers;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 import java.util.Date;
 import java.util.List;
@@ -38,7 +39,7 @@ import org.dynami.runtime.utils.LastPriceEngine;
 
 @Config.Settings(description="Parameters for executing stored trasi test data")
 public class TrasiTestDataHandler implements IService, IDataHandler {
-
+	private static final SimpleDateFormat DF = new SimpleDateFormat("dd/MM/yyyy");
 	private final AtomicInteger idx = new AtomicInteger(0);
 	private final AtomicBoolean isStarted = new AtomicBoolean(true);
 	private final AtomicBoolean isRunning = new AtomicBoolean(false);
@@ -55,10 +56,10 @@ public class TrasiTestDataHandler implements IService, IDataHandler {
 	private File databaseFile = new File("/Users/Dacia/Documents/02.Ale/workspace/trasi-data-test/trasi-data-test.db");
 	
 	@Config.Param(name="Starting date", description="Starting date for strategy")
-	private Date startFrom;
+	private Date startFrom = parse("24/07/2017");
 	
 	@Config.Param(name = "Option Expire Date", description = "Select option chain")
-	private Date expire;
+	private Date expire = parse("18/08/2017");
 
 	@Config.Param(name = "Time compression", description = "Compression used for time frame", min = 1, max = 100, step = 1, type = Config.Type.TimeFrame)
 	private Long compressionRate = IData.TimeUnit.Minute.millis() * 5;
@@ -107,9 +108,6 @@ public class TrasiTestDataHandler implements IService, IDataHandler {
 				+ "and ob.time >= ?", 
 				expire, startFrom);
 		
-		/**
-		 * TODO initialize futures and options
-		 */
 		final Asset.Future future = new Asset.Future(fut.getTicker(), fut.getIsin(), fut.getName(), fut.getPointValue(), .05, marginRequired, LastPriceEngine.MidPrice, market, fut.getExpire().getTime(), 1L, index, () -> 1.);
 		msg.sync(Topics.INSTRUMENT.topic, future);
 
@@ -121,6 +119,12 @@ public class TrasiTestDataHandler implements IService, IDataHandler {
 					Asset.Option.Exercise.European,  new JQuantLibUtils.GreeksEngine(), BSEurOptionsUtils.implVola, EuropeanBlackScholes.OptionPricingEngine);
 			msg.sync(Topics.INSTRUMENT.topic, option);
 		}
+		
+//		final TrasiBookSpot fBook = DAO.Sqlite.first(new Criteria<>(TrasiBookSpot.class).andEquals("ticker", fut.getTicker()).andEquals("time", times.get(0).getValue()));
+//		final double fPrice = fBook.avgPrice();
+//		final Bar firstBar = new Bar(fBook.ticker, fPrice, fPrice, fPrice, fPrice, 0, fBook.getTime().getTime());
+//		msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(fBook.ticker, DTime.Clock.getTime(), firstBar, Event.Type.OnBarClose));
+		System.out.println("TrasiTestDataHandler.init()");
 		
 		new Thread(new Runnable() {
 			@Override
@@ -272,7 +276,16 @@ public class TrasiTestDataHandler implements IService, IDataHandler {
 	public void setMarginRequired(Double marginRequired) {
 		this.marginRequired = marginRequired;
 	}
-
+	
+	private static Date parse(String date) {
+		try {
+			return DF.parse(date);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
 	public static abstract class TrasiAsset {
 		@IField(pk=true, lenght=30) 
 		private String ticker;

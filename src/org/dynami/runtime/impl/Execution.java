@@ -128,6 +128,7 @@ public enum Execution implements IExecutionManager {
 
 					engine.setup(serviceBus);
 					engine.load(strategy, strategySettings);
+					engine.startUp();
 				}
 				return stateMachine.changeState(State.Loaded);
 			} catch (Exception e) {
@@ -138,7 +139,7 @@ public enum Execution implements IExecutionManager {
 			return false;
 		}
 	}
-
+	
 	@Override
 	public boolean run() {
 		if(stateMachine.canChangeState(State.Running)){

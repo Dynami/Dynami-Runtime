@@ -57,6 +57,7 @@ public class DataService implements IService, IDataService  {
 
 	@Override
 	public boolean init(Config config) throws Exception {
+		System.out.println("DataService.init()");
 		data.clear();
 		if(!initialized){
 			msg.subscribe(Topics.STRATEGY_EVENT.topic, (last, _msg)->{

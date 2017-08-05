@@ -83,6 +83,10 @@ public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 		if(classSettings != null){
 			applySettings(strategy, classSettings);
 		}
+	}
+	
+	@Override
+	public void startUp() throws Exception {
 		this.strategy.onStrategyStart(this);
 		gotoNextStage(this.stage);
 	}

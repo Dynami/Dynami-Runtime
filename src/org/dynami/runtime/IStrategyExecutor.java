@@ -28,6 +28,8 @@ public interface IStrategyExecutor {
 	
 	public void load(final IStrategy strategy, final StrategySettings strategySettings) throws Exception;
 	
+	public void startUp() throws Exception;
+	
 	public void dispose();
 	
 	public IStage getActiveStage();

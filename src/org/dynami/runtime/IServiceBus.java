@@ -58,10 +58,10 @@ public interface IServiceBus {
 
 				if(!s.init(config)){
 					initiliazed = false;
-					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "init", "Unable to init service "+s.id()));
+					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "init", "Unable to init service "+s.id(), null));
 				}
 			} catch (Exception e) {
-				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "init", DUtils.getErrorMessage(e)));
+				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "init", DUtils.getErrorMessage(e), e));
 			}
 		};
 		return initiliazed;
@@ -73,11 +73,11 @@ public interface IServiceBus {
 			try {
 				if(!s.start()){
 					isOk.set(false);
-					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "start", "Unable to start service "+s.id()));
+					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "start", "Unable to start service "+s.id(), null));
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
-				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "start", "Error on "+s.id()+" "+DUtils.getErrorMessage(e)));
+				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "start", "Error on "+s.id()+" "+DUtils.getErrorMessage(e), e));
 			}
 		});
 		return isOk.get();
@@ -89,10 +89,10 @@ public interface IServiceBus {
 			try {
 				if(!s.reset()){
 					isOk.set(false);
-					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "reset", "Unable to reset service "+s.id()));
+					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "reset", "Unable to reset service "+s.id(), null));
 				}
 			} catch (Exception e) {
-				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "reset", DUtils.getErrorMessage(e)));
+				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "reset", DUtils.getErrorMessage(e), e));
 			}
 		});
 		return isOk.get();
@@ -105,10 +105,10 @@ public interface IServiceBus {
 			try {
 				if(!s.stop()){
 					isOk.set(false);
-					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "stop", "Unable to stop service "+s.id()));
+					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "stop", "Unable to stop service "+s.id(), null));
 				}
 			} catch (Exception e) {
-				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "stop", DUtils.getErrorMessage(e)));
+				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "stop", DUtils.getErrorMessage(e), e));
 			}
 		});
 		return isOk.get();
@@ -120,10 +120,10 @@ public interface IServiceBus {
 			try {
 				if(!s.resume()){
 					isOk.set(false);
-					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "resume", "Unable to resume service "+s.id()));
+					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "resume", "Unable to resume service "+s.id(), null));
 				}
 			} catch (Exception e) {
-				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "resume", DUtils.getErrorMessage(e)));
+				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "resume", DUtils.getErrorMessage(e), e));
 			}
 		});
 		return isOk.get();
@@ -135,10 +135,10 @@ public interface IServiceBus {
 			try {
 				if(!s.dispose()){
 					isOk.set(false);
-					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "dispose", "Unable to dispose service "+s.id()));
+					Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "dispose", "Unable to dispose service "+s.id(), null));
 				}
 			} catch (Exception e) {
-				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "dispose", DUtils.getErrorMessage(e)));
+				Execution.Manager.msg().async(Topics.SERVICE_STATUS.topic, new ServiceStatus(s.id(), "dispose", DUtils.getErrorMessage(e), e));
 			}
 		});
 		return isOk.get();
@@ -149,11 +149,13 @@ public interface IServiceBus {
 		public final String serviceId;
 		public final String operation;
 		public final String message;
+		public final Throwable error;
 
-		public ServiceStatus(String serviceId, String operation, String message){
+		public ServiceStatus(String serviceId, String operation, String message, Throwable error){
 			this.serviceId = serviceId;
 			this.operation = operation;
 			this.message = message;
+			this.error = error;
 		}
 
 		@Override

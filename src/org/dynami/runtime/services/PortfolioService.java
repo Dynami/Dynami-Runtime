@@ -217,7 +217,7 @@ public class PortfolioService implements IService, IPortfolioService {
 
 	@Override
 	public double getCurrentBudget() {
-		return budget+realised()+unrealised();
+		return budget+realized()+unrealized();
 	}
 
 	@Override
@@ -276,7 +276,7 @@ public class PortfolioService implements IService, IPortfolioService {
 	}
 
 	@Override
-	public double realised() {
+	public double realized() {
 		return realised.get();
 	}
 
@@ -291,7 +291,7 @@ public class PortfolioService implements IService, IPortfolioService {
 	}
 
 	@Override
-	public double unrealised(String symbol){
+	public double unrealized(String symbol){
 		final OpenPosition o = openPositions.get(symbol);
 		if(o == null) {
 			return 0.0;
@@ -303,7 +303,7 @@ public class PortfolioService implements IService, IPortfolioService {
 	}
 
 	@Override
-	public double unrealised() {
+	public double unrealized() {
 		final AtomicLong unrealized = new AtomicLong(0);
 		openPositions.values().stream().forEach(o->{
 			double currentPrice = o.getCurrentPrice();

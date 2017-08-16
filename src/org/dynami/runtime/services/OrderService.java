@@ -17,7 +17,7 @@ package org.dynami.runtime.services;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import org.dynami.core.assets.Asset;
@@ -33,7 +33,7 @@ import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 
 public class OrderService implements IService, IOrderService {
-	private final AtomicInteger ids = new AtomicInteger(0);
+	private final AtomicLong ids = new AtomicLong(0);
 	private final List<OrderRequest> requests = new CopyOnWriteArrayList<OrderRequest>();
 	private boolean initialized = false;
 //	private final List<OrderRequest> executed = new CopyOnWriteArrayList<OrderRequest>();
@@ -96,7 +96,7 @@ public class OrderService implements IService, IOrderService {
 
 	@Override
 	public long limitOrder(String symbol, double price, long quantity, String note, IOrderHandler handler) {
-		final int id = ids.getAndIncrement();
+		final long id = ids.getAndIncrement();
 		System.out.println("OrderService.limitOrder() "+id+" "+symbol+" "+quantity+" at "+price);
 		final OrderRequest request = new OrderRequest(
 				id,
@@ -136,7 +136,7 @@ public class OrderService implements IService, IOrderService {
 		final Tradable trad = (Tradable)Execution.Manager.dynami().assets().getBySymbol(symbol);
 		double price = (quantity>0)?trad.book.ask().price:trad.book.bid().price;
 		
-		final int id = ids.getAndIncrement();
+		final long id = ids.getAndIncrement();
 		System.out.println("OrderService.marketOrder() "+id+" "+symbol+" "+quantity+" at "+price);
 		final OrderRequest request = new OrderRequest(
 				id,
@@ -164,7 +164,7 @@ public class OrderService implements IService, IOrderService {
 	}
 
 	@Override
-	public OrderRequest getOrderById(int id) {
+	public OrderRequest getOrderById(long id) {
 		return requests.stream()
 				.filter(o->o.id == id)
 				.findFirst()
@@ -172,7 +172,7 @@ public class OrderService implements IService, IOrderService {
 	}
 
 	@Override
-	public Status getOrderStatus(int id) {
+	public Status getOrderStatus(long id) {
 		OrderRequest req = getOrderById(id);
 		if(req != null)
 			return req.getStatus();
@@ -181,7 +181,7 @@ public class OrderService implements IService, IOrderService {
 	}
 
 	@Override
-	public boolean cancelOrder(int id) {
+	public boolean cancelOrder(long id) {
 		OrderRequest req = getOrderById(id);
 		if(req != null){
 			req.updateStatus(Status.Cancelled);

@@ -141,8 +141,8 @@ public class Starter {
 				System.out.println();
 
 				System.out.printf("Budget    : %6.2f\n", portfolio.getCurrentBudget());
-				System.out.printf("Realized  : %6.2f\n", portfolio.realised());
-				System.out.printf("Unrealized: %6.2f\n", portfolio.unrealised());
+				System.out.printf("Realized  : %6.2f\n", portfolio.realized());
+				System.out.printf("Unrealized: %6.2f\n", portfolio.unrealized());
 				//System.err.println(Commands.START_RESPONSE+cmd+"_"+((executed)?Commands.RESPONSE_EXECUTED:Commands.RESPONSE_NOT_EXECUTED)+Commands.END_RESPONSE);
 			} catch (Exception e) {
 				System.err.println(Commands.START_RESPONSE+cmd+"_"+Commands.RESPONSE_NOT_EXECUTED+Commands.END_RESPONSE);
@@ -160,8 +160,8 @@ public class Starter {
 				System.out.println();
 
 				System.out.printf("Budget    : %6.2f\n", portfolio.getCurrentBudget());
-				System.out.printf("Realized  : %6.2f\n", portfolio.realised());
-				System.out.printf("Unrealized: %6.2f\n", portfolio.unrealised());
+				System.out.printf("Realized  : %6.2f\n", portfolio.realized());
+				System.out.printf("Unrealized: %6.2f\n", portfolio.unrealized());
 				System.out.println();
 				for(ClosedPosition cp :portfolio.getClosedPositions()){
 					System.out.println(cp);

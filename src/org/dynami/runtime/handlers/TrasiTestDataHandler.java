@@ -132,6 +132,7 @@ public class TrasiTestDataHandler implements IService, IDataHandler {
 				while (isStarted.get()) {
 					if (isRunning.get()) {
 						try {
+							DAO.Sqlite.use(databaseFile);
 							if (idx.get() >= times.size()) {
 								System.out.println("No more data!!! Give X or XX command to print final status");
 								msg.sync(Topics.STRATEGY_EVENT.topic, Event.Factory.noMoreDataEvent(symbol));
@@ -141,7 +142,6 @@ public class TrasiTestDataHandler implements IService, IDataHandler {
 							final TrasiBookSpot fBook = DAO.Sqlite.first(new Criteria<>(TrasiBookSpot.class).andEquals("ticker", fut.getTicker()).andEquals("time", time));
 							
 							double fPrice = fBook.avgPrice(); 
-							
 							DTime.Clock.update(time);
 							// if no future price available skip elaboration
 							if(fPrice == 0) continue;
@@ -151,11 +151,11 @@ public class TrasiTestDataHandler implements IService, IDataHandler {
 							 */
 							Book.Orders fBid = new Book.Orders(fBook.ticker, time, Side.BID, 1, fBook.bid, fBook.bidVolume);
 							msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + fBook.ticker, fBid);
-							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(fBook.ticker, fBid));
+							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.createOnTickEvent(fBook.ticker, fBid));
 							
 							Book.Orders fAsk = new Book.Orders(fBook.ticker, time, Side.ASK, 1, fBook.ask, fBook.askVolume);
 							msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + fBook.ticker, fAsk);
-							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(fBook.ticker, fAsk));
+							msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.createOnTickEvent(fBook.ticker, fAsk));
 
 							/**
 							 * Fire book prices for options
@@ -165,13 +165,13 @@ public class TrasiTestDataHandler implements IService, IDataHandler {
 								if(oBook != null && oBook.bid > 0) {
 									Book.Orders oBid = new Book.Orders(oBook.ticker, time, Side.BID, 1, oBook.bid, oBook.bidVolume);
 									msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + oBook.ticker, oBid);
-									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(oBook.ticker, oBid));
+									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.createOnTickEvent(oBook.ticker, oBid));
 								}
 //								
 								if(oBook != null && oBook.ask > 0) {
 									Book.Orders oAsk = new Book.Orders(oBook.ticker, time, Side.ASK, 1, oBook.ask, oBook.askVolume);
 									msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + oBook.ticker, oAsk);
-									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(oBook.ticker, oAsk));
+									msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.createOnTickEvent(oBook.ticker, oAsk));
 								}
 							}
 							
@@ -179,7 +179,7 @@ public class TrasiTestDataHandler implements IService, IDataHandler {
 							 * Fire strategy on bar close events
 							 */
 							final Bar current = new Bar(fBook.ticker, fPrice, fPrice, fPrice, fPrice, 0, time);
-							if (prevTime.get() == 0 || time / DUtils.DAY_MILLIS < prevTime.get() / DUtils.DAY_MILLIS) {
+							if (prevTime.get() == 0 || (time / DUtils.DAY_MILLIS) > (prevTime.get() / DUtils.DAY_MILLIS)) {
 								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(fBook.ticker, DTime.Clock.getTime(),
 										current, Event.Type.OnBarClose, Event.Type.OnDayClose));
 							} else {
@@ -191,9 +191,8 @@ public class TrasiTestDataHandler implements IService, IDataHandler {
 						} catch(Exception e){
 							Execution.Manager.msg().async(Topics.INTERNAL_ERRORS.topic, e);
 						}
-					} else {
-						try { Thread.sleep(clockFrequency.longValue()); } catch (InterruptedException e) {}
 					}
+					try { Thread.sleep(clockFrequency.longValue()); } catch (InterruptedException e) {}
 				}
 				System.out.println("TrasiTestDataHandler::init() closing TextFileDataHandler thread");
 			}

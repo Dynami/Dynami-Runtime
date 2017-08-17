@@ -130,6 +130,7 @@ public class StrategyClassLoader extends URLClassLoader {
 			entry = _enum.nextElement();
 			if (entry.getName().endsWith(".class")) {
 				className = entry.getName();
+//				System.out.println("StrategyClassLoader.loadDynamiComponents()	"+className);
 				length = className.length();
 				className = className.substring(0, length - 6).replace('/','.');
 				Class<?> c = loadClass(className);

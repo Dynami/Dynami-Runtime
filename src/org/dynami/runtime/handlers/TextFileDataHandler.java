@@ -216,11 +216,11 @@ public class TextFileDataHandler implements IService, IDataHandler {
 								
 								Book.Orders bid = new Book.Orders(currentBar.symbol, currentBar.time, Side.BID, 1, price - bidAskSpread / 2, 100);
 								msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, bid);
-								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, bid));
+								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.createOnTickEvent(currentBar.symbol, bid));
 								
 								Book.Orders ask = new Book.Orders(currentBar.symbol, currentBar.time, Side.ASK, 1, price + bidAskSpread / 2, 100);
 								msg.async(Topics.ASK_ORDERS_BOOK_PREFIX.topic + currentBar.symbol, ask);
-								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.create(currentBar.symbol, ask));
+								msg.async(Topics.STRATEGY_EVENT.topic, Event.Factory.createOnTickEvent(currentBar.symbol, ask));
 								
 								if (i == OPEN) {
 									DTime.Clock.update(currentBar.time - compressionRate);

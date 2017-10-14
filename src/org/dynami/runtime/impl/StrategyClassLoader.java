@@ -125,30 +125,41 @@ public class StrategyClassLoader extends URLClassLoader {
 		JarEntry entry;
 		String className;
 
-		int length;
-		for (Enumeration<JarEntry> _enum = jarFile.entries(); _enum.hasMoreElements();) {
-			entry = _enum.nextElement();
-			if (entry.getName().endsWith(".class")) {
-				className = entry.getName();
-//				System.out.println("StrategyClassLoader.loadDynamiComponents()	"+className);
-				length = className.length();
-				className = className.substring(0, length - 6).replace('/','.');
-				Class<?> c = loadClass(className);
-				Class<?>[] inter = c.getInterfaces();
-				for (Class<?> inf : inter) {
-					if (this.strategy == null && inf.equals(IStrategy.class) && !Modifier.isAbstract(c.getModifiers())) {
-						this.strategy = (Class<IStrategy>) c;
-						ClassSettings classSettings = extractClassSettings(c);
-						strategySettings.setStrategy(classSettings);
-						break;
-					} else if(inf.equals(IStage.class) && !Modifier.isAbstract(c.getModifiers())){
-						stages.add((Class<IStage>)c);
-						ClassSettings classSettings = extractClassSettings(c);
-						strategySettings.getStagesSettings().put(c.getName(), classSettings);
+		try {
+			int length = 0;
+			for (Enumeration<JarEntry> _enum = jarFile.entries(); _enum.hasMoreElements();) {
+				entry = _enum.nextElement();
+				boolean log = false;
+				if (entry.getName().endsWith(".class")) {
+					className = entry.getName();
+					length = className.length();
+					className = className.substring(0, length - 6).replace('/','.');
+					Class<?> c = loadClass(className);
+					Class<?>[] inter = c.getInterfaces();
+					
+					for (Class<?> inf : inter) {
+						if (this.strategy == null && inf.equals(IStrategy.class) && !Modifier.isAbstract(c.getModifiers())) {
+							this.strategy = (Class<IStrategy>) c;
+							ClassSettings classSettings = extractClassSettings(c);
+							strategySettings.setStrategy(classSettings);
+							System.out.println("StrategyClassLoader.loadDynamiComponents() Loaded "+c );
+							log = true;
+//							break;
+						} else if(inf.equals(IStage.class) && !Modifier.isAbstract(c.getModifiers())){
+							stages.add((Class<IStage>)c);
+							ClassSettings classSettings = extractClassSettings(c);
+							strategySettings.getStagesSettings().put(c.getName(), classSettings);
+							System.out.println("StrategyClassLoader.loadDynamiComponents() Loaded "+c );
+							log = true;
+						}
 					}
 				}
+				if(log) System.out.println("StrategyClassLoader.loadDynamiComponents() exit "+entry.getName());
 			}
+		} catch (Throwable e) {
+			e.printStackTrace();
 		}
+		
 	}
 
 	/** Close references to opened zip files (via getResourceAsStream) */

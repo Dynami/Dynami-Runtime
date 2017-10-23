@@ -1,6 +1,8 @@
 package org.dynami.runtime.handlers;
 
 import java.io.File;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 import java.util.Date;
@@ -10,11 +12,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.atria.dao.Criteria;
-import org.atria.dao.DAO;
-import org.atria.dao.DAOPrimitives;
-import org.atria.dao.IEntity;
-import org.atria.dao.IField;
 import org.dynami.core.Event;
 import org.dynami.core.assets.Asset;
 import org.dynami.core.assets.Book;
@@ -28,6 +25,10 @@ import org.dynami.core.data.IVolatilityEngine;
 import org.dynami.core.data.vola.RogersSatchellVolatilityEngine;
 import org.dynami.core.utils.DTime;
 import org.dynami.core.utils.DUtils;
+import org.dynami.orm.Criteria;
+import org.dynami.orm.DAO;
+import org.dynami.orm.DAO.IEntity;
+import org.dynami.orm.DAO.IField;
 import org.dynami.runtime.IDataHandler;
 import org.dynami.runtime.IService;
 import org.dynami.runtime.impl.Execution;
@@ -45,6 +46,7 @@ public class TrasiTestDataHandler implements IService, IDataHandler {
 	private final AtomicBoolean isRunning = new AtomicBoolean(false);
 	private final IMsg msg = Execution.Manager.msg();
 	private Class<? extends IVolatilityEngine> volaEngineClass = RogersSatchellVolatilityEngine.class;
+	private Connection conn;
 
 	@Config.Param(name = "Symbol", description = "Main symbol")
 	private String symbol = "FTSEMIB";
@@ -56,10 +58,10 @@ public class TrasiTestDataHandler implements IService, IDataHandler {
 	private File databaseFile = new File("/Users/Dacia/Documents/02.Ale/workspace/trasi-data-test/trasi-data-test.db");
 	
 	@Config.Param(name="Starting date", description="Starting date for strategy")
-	private Date startFrom = parse("24/07/2017");
+	private Date startFrom = parse("22/09/2017");
 	
 	@Config.Param(name = "Option Expire Date", description = "Select option chain")
-	private Date expire = parse("18/08/2017");
+	private Date expire = parse("20/10/2017");
 
 	@Config.Param(name = "Time compression", description = "Compression used for time frame", min = 1, max = 100, step = 1, type = Config.Type.TimeFrame)
 	private Long compressionRate = IData.TimeUnit.Minute.millis() * 5;
@@ -88,19 +90,24 @@ public class TrasiTestDataHandler implements IService, IDataHandler {
 			Execution.Manager.msg().async(Topics.INTERNAL_ERRORS.topic, new IllegalStateException("File ["+databaseFile.getPath()+"] doesn't exist"));
 			return false;
 		}
-		DAO.Sqlite.use(databaseFile);
+		
+		String connetionUrl = "jdbc:sqlite:"+databaseFile.getAbsolutePath();
+		Class.forName("org.sqlite.JDBC");
+		conn = DriverManager.getConnection(connetionUrl);
+		
+		DAO.$.setup(DAO.SqlDialect.Sqlite,new DAO.SingleConnectionDataSource(conn));
 		
 		msg.forceSync(true);
 		final AtomicLong prevTime = new AtomicLong(0);
 		final Market market = new Market("IDEM", "IDEM", Locale.ITALY, LocalTime.of(9, 0, 0), LocalTime.of(17, 25, 0));
 		final Asset.Index index = new Asset.Index(Asset.Family.Index, "^FTSEMIB", "IT0000000001", "FTSEMIB Index", 1, .01, market);
 		
-		final TrasiAsset.Future fut = DAO.Sqlite.first(new Criteria<>(TrasiAsset.Future.class).andEqualsGreaterThan("expire", expire).orderBy("expire"));
+		final TrasiAsset.Future fut = DAO.$.selectFirst(new Criteria<>(TrasiAsset.Future.class).andEqualsGreaterThan("expire", expire).orderBy("expire"));
 		
-		final List<TrasiAsset.Option> options = DAO.Sqlite.select(new Criteria<>(TrasiAsset.Option.class).andEquals("expire", expire));
+		final List<TrasiAsset.Option> options = DAO.$.select(new Criteria<>(TrasiAsset.Option.class).andEquals("expire", expire));
 		
-		final List<DAOPrimitives.Long> times = DAO.Sqlite.select(
-				DAOPrimitives.Long.class, 
+		final List<Long> times = DAO.$.numbers(
+				Long.class, 
 				" select distinct ob.time as 'value' "
 				+ "from book ob , options o "
 				+ "where o.expire = ? "
@@ -132,14 +139,14 @@ public class TrasiTestDataHandler implements IService, IDataHandler {
 				while (isStarted.get()) {
 					if (isRunning.get()) {
 						try {
-							DAO.Sqlite.use(databaseFile);
+							DAO.$.setup(DAO.SqlDialect.Sqlite,new DAO.SingleConnectionDataSource(conn));
 							if (idx.get() >= times.size()) {
 								System.out.println("No more data!!! Give X or XX command to print final status");
 								msg.sync(Topics.STRATEGY_EVENT.topic, Event.Factory.noMoreDataEvent(symbol));
 								break;
 							}
-							final long time = times.get(idx.getAndIncrement()).getValue();
-							final TrasiBookSpot fBook = DAO.Sqlite.first(new Criteria<>(TrasiBookSpot.class).andEquals("ticker", fut.getTicker()).andEquals("time", time));
+							final long time = times.get(idx.getAndIncrement()).longValue();
+							final TrasiBookSpot fBook = DAO.$.selectFirst(new Criteria<>(TrasiBookSpot.class).andEquals("ticker", fut.getTicker()).andEquals("time", time));
 							
 							double fPrice = fBook.avgPrice(); 
 							DTime.Clock.update(time);
@@ -161,7 +168,7 @@ public class TrasiTestDataHandler implements IService, IDataHandler {
 							 * Fire book prices for options
 							 */
 							for(TrasiAsset.Option opt : options) {
-								final TrasiBookSpot oBook = DAO.Sqlite.first(new Criteria<>(TrasiBookSpot.class).andEquals("ticker", opt.getTicker()).andEquals("time", time));
+								final TrasiBookSpot oBook = DAO.$.selectFirst(new Criteria<>(TrasiBookSpot.class).andEquals("ticker", opt.getTicker()).andEquals("time", time));
 								if(oBook != null && oBook.bid > 0) {
 									Book.Orders oBid = new Book.Orders(oBook.ticker, time, Side.BID, 1, oBook.bid, oBook.bidVolume);
 									msg.async(Topics.BID_ORDERS_BOOK_PREFIX.topic + oBook.ticker, oBid);

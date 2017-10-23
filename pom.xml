@@ -49,9 +49,14 @@
 			<version>0.2.4</version>
 		</dependency>
 		<dependency>
-			<groupId>org.atria</groupId>
-			<artifactId>dao</artifactId>
+			<groupId>org.dynami</groupId>
+			<artifactId>Dynami-Orm</artifactId>
 			<version>0.0.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.xerial</groupId>
+			<artifactId>sqlite-jdbc</artifactId>
+			<version>3.19.3</version>
 		</dependency>
 	</dependencies>
 </project>

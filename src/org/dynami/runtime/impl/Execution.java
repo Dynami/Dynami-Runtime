@@ -65,7 +65,7 @@ public enum Execution implements IExecutionManager {
 	public boolean setStrategyExecutor(Class<? extends IStrategyExecutor> engineClazz) {
 		try {
 			System.out.println("Execution.setStrategyExecutor()");
-			this.engine = engineClazz.newInstance();
+			this.engine = engineClazz.getDeclaredConstructor().newInstance();
 			this.dynami = (IDynami)engine;
 		} catch (Exception e) {
 			msg().async(Topics.INTERNAL_ERRORS.topic, e);
@@ -124,7 +124,7 @@ public enum Execution implements IExecutionManager {
 		if(stateMachine.canChangeState(State.Loaded)){
 			try {
 				try(StrategyClassLoader loader = new StrategyClassLoader(strategyJarPath, getClass().getClassLoader())){
-					final IStrategy strategy = loader.getStrategy().newInstance();
+					final IStrategy strategy = loader.getStrategy().getDeclaredConstructor().newInstance();
 
 					engine.setup(serviceBus);
 					engine.load(strategy, strategySettings);

@@ -98,7 +98,7 @@ public class StrategyClassLoader extends URLClassLoader {
 			classSettings.setType(clazz.getName());
 		}
 		Field[] fields = clazz.getDeclaredFields();
-		Object obj = clazz.newInstance();
+		Object obj = clazz.getDeclaredConstructor().newInstance();
 		for(Field f:fields){
 			Config.Param p = f.getAnnotation(Config.Param.class);
 			if(p != null){

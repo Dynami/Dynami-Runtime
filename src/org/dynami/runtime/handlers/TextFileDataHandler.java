@@ -125,7 +125,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 			Execution.Manager.msg().async(Topics.INTERNAL_ERRORS.topic, new IllegalStateException("File ["+dataFile.getAbsolutePath()+"] doesn't exist"));
 			return false;
 		}
-		volaEngine = volaEngineClass.newInstance();
+		volaEngine = volaEngineClass.getDeclaredConstructor().newInstance();
 		historical = restorePriceData(dataFile);
 		historical.setAutoCompressionRate();
 		historical = historical.changeCompression(compressionRate);

@@ -75,7 +75,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private String symbol = "FTSEMIB";
 
 	@Config.Param(name = "Clock frequency", description = "Execution speed. Set to zero for no latency.", step = 1)
-	private Long clockFrequency = 500L;
+	private Long clockFrequency = 200L;
 
 	@Config.Param(name = "Future Bid/Ask spread", description = "Bid/Ask spread expressed in points", step = 0.01)
 	private Double bidAskSpread = 5.0;
@@ -93,7 +93,7 @@ public class TextFileDataHandler implements IService, IDataHandler {
 	private Double riskfreeRate = .0014;
 
 	@Config.Param(name = "Enable option pricing", description = "Activate simulated option pricing")
-	private Boolean optionPricing = true;
+	private Boolean optionPricing = false;
 
 	@Config.Param(name = "Option Strike Step", description = "Number of points between one option strike and another", step = .1)
 	private Double optionStep = 500.;

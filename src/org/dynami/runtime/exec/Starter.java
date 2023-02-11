@@ -51,7 +51,7 @@ public class Starter {
 					// set proper path, but let empty file for the moment
 					"-file", "../Dynami-Sample-Strategy/resources/myPersonalSettings.dynami",
 					// set proper path
-					"-strategy_lib", "/home/ale/java-projects/Dynami/Dynami-Sample-Strategy/target/Dynami-Sample-Strategy-0.0.1.jar"});
+					"-strategy_lib", "../Dynami-Adx-Strategy/target/Dynami-Adx-Strategy-0.0.1.jar"});
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -59,7 +59,7 @@ public class Starter {
 
 	public void execute(String args[]) throws Exception {
 		Args arguments = new Args();
-		new JCommander(arguments, args);
+		new JCommander(arguments).parse(args);;
 
 		Execution.Manager.getServiceBus().registerDefaultServices();
 		Execution.Manager.getServiceBus().registerService(new TextFileDataHandler(), 100);

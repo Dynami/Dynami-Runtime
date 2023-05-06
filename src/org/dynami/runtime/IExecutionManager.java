@@ -41,7 +41,7 @@ public interface IExecutionManager {
 	/**
 	 * Set a custom IStrategyExecutor engine, instead of the default one {@link StrategyExecutor}.
 	 * If you want using a different one, invoke this method before invoking IExecutionManager::load();
-	 * <pre>Errors are propagated through {@link Topics.ERRORS}<pre>
+	 * <pre>Errors are propagated through {@link Topics.STRATEGY_ERRORS}<pre>
 	 * @param engine
 	 * @return true it is all ok, false otherwise
 	 * @see IStrategyExecutor

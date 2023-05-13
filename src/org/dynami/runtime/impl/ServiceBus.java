@@ -17,16 +17,16 @@ package org.dynami.runtime.impl;
 
 import java.util.Collection;
 
-import org.dynami.runtime.IService;
+import org.dynami.runtime.Service;
 import org.dynami.runtime.IServiceBus;
 import org.dynami.runtime.utils.PrioritizedMap;
 
 public class ServiceBus implements IServiceBus {
 
-	private final PrioritizedMap<String, IService> services = new PrioritizedMap<>();
+	private final PrioritizedMap<String, Service> services = new PrioritizedMap<>();
 
 	@Override
-	public IService registerService(IService service, int priority) {
+	public Service registerService(Service service, int priority) {
 		return services.put(priority, service.id(), service);
 	}
 
@@ -37,12 +37,12 @@ public class ServiceBus implements IServiceBus {
 	}
 
 	@Override
-	public IService getService(String ID) {
+	public Service getService(String ID) {
 		return services.get(ID);
 	}
 
 	@Override
-	public Collection<IService> getServices() {
+	public Collection<Service> getServices() {
 		return services.prioritized();
 	}
 }

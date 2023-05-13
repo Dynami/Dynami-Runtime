@@ -37,11 +37,11 @@ import org.dynami.core.portfolio.OpenPosition;
 import org.dynami.core.services.IPortfolioService;
 import org.dynami.core.utils.DTime;
 import org.dynami.core.utils.DUtils;
-import org.dynami.runtime.IService;
+import org.dynami.runtime.Service;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 
-public class PortfolioService implements IService, IPortfolioService {
+public class PortfolioService extends Service implements IPortfolioService {
 	private final List<ExecutedOrder> ordersLog = new ArrayList<>();
 	private final Map<String, OpenPosition> openPositions = new ConcurrentSkipListMap<>();
 	private final List<ClosedPosition> closedPositions = new ArrayList<>();
@@ -164,7 +164,8 @@ public class PortfolioService implements IService, IPortfolioService {
 			msg.subscribe(Topics.EXECUTED_ORDER.topic, orderExecutedEventHandler);
 			initialized = true;
 		}
-		return initialized;
+		//return initialized;
+		return super.init(config);
 	}
 
 	@Override

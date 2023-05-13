@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.dynami.core.config.Config;
 import org.dynami.core.utils.DUtils;
+import org.dynami.runtime.ib.IBService;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.services.AssetService;
 import org.dynami.runtime.services.DataService;
@@ -35,25 +36,26 @@ import org.dynami.runtime.topics.Topics;
 public interface IServiceBus {
 	public static final String ID = "IServiceBus";
 
-	public IService registerService(final IService service, final int priority) throws Exception;
+	public Service registerService(final Service service, final int priority) throws Exception;
 
 	public <T> T getService(final Class<T> service, final String ID);
 
-	public IService getService(String ID);
+	public Service getService(String ID);
 
-	public Collection<IService> getServices();
+	public Collection<Service> getServices();
 
 	public default void registerDefaultServices() throws Exception {
-		registerService(new AssetService(), 10);
-		registerService(new TraceService(), 20);
+		registerService(new AssetService(), 0);
+		registerService(new TraceService(), 10);
 		registerService(new DataService(), 30);
 		registerService(new OrderService(), 40);
 		registerService(new PortfolioService(), 50);
+		registerService(new IBService(), 60);
 	}
 
 	public default boolean initServices(final Config config){
 		boolean initiliazed = true;
-		for(IService s : getServices()){
+		for(Service s : getServices()){
 			try {
 
 				if(!s.init(config)){

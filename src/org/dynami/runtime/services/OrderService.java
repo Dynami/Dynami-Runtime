@@ -28,11 +28,11 @@ import org.dynami.core.orders.OrderRequest;
 import org.dynami.core.portfolio.ExecutedOrder;
 import org.dynami.core.services.IOrderService;
 import org.dynami.core.utils.DTime;
-import org.dynami.runtime.IService;
+import org.dynami.runtime.Service;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 
-public class OrderService implements IService, IOrderService {
+public class OrderService extends Service implements IOrderService {
 	private final AtomicLong ids = new AtomicLong(0);
 	private final List<OrderRequest> requests = new CopyOnWriteArrayList<OrderRequest>();
 	private boolean initialized = false;
@@ -91,7 +91,7 @@ public class OrderService implements IService, IOrderService {
 					.count();
 			});
 		});
-		return IService.super.init(config);
+		return super.init(config);
 	}
 
 	@Override

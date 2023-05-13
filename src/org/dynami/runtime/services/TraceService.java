@@ -20,11 +20,11 @@ import org.dynami.core.services.ITraceService;
 import org.dynami.core.services.ITraceService.Trace.Type;
 import org.dynami.core.utils.DTime;
 import org.dynami.core.utils.DUtils;
-import org.dynami.runtime.IService;
+import org.dynami.runtime.Service;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 
-public class TraceService implements IService, ITraceService {
+public class TraceService extends Service implements ITraceService {
 
 	private final IMsg msg = Execution.Manager.msg();
 

@@ -30,11 +30,11 @@ import org.dynami.core.bus.IMsg;
 import org.dynami.core.config.Config;
 import org.dynami.core.services.IAssetService;
 import org.dynami.core.utils.DTime;
-import org.dynami.runtime.IService;
+import org.dynami.runtime.Service;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 
-public class AssetService implements IService, IAssetService  {
+public class AssetService extends Service implements IAssetService  {
 	private final Map<String, Asset> registry = new ConcurrentSkipListMap<>();
 	private final Map<String, OptionChain> chains = new ConcurrentSkipListMap<>();
 	private final IMsg msg = Execution.Manager.msg();
@@ -93,7 +93,8 @@ public class AssetService implements IService, IAssetService  {
 			});
 			initialized = true;
 		}
-		return initialized;
+		//return initialized;
+		return super.init(config);
 	}
 
 	@Override

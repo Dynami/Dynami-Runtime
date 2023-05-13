@@ -53,8 +53,8 @@ import org.dynami.runtime.topics.Topics;
 
 public class StrategyExecutor implements IStrategyExecutor, IDynami, Handler {
 	private final List<ITechnicalIndicator> technicalIndicators = new ArrayList<>();
-	private final AtomicReference<Event> lastIncomingEvent = new AtomicReference<Event>(null);
-	private final AtomicReference<Event> lastExecutedEvent = new AtomicReference<Event>(null);
+	private final AtomicReference<Event> lastIncomingEvent = new AtomicReference<>(null);
+	private final AtomicReference<Event> lastExecutedEvent = new AtomicReference<>(null);
 	private final AtomicBoolean endStrategy = new AtomicBoolean(false);
 	private final Map<Class<? extends IStage>, Event.Type[]> eventFilters = new ConcurrentHashMap<>();
 	private final Map<Class<? extends IStage>, String[]> symbolFilters = new ConcurrentHashMap<>();

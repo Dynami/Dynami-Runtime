@@ -24,6 +24,7 @@ import org.dynami.core.portfolio.OpenPosition;
 import org.dynami.core.services.IPortfolioService;
 import org.dynami.runtime.IServiceBus.ServiceStatus;
 import org.dynami.runtime.handlers.TextFileDataHandler;
+import org.dynami.runtime.ib.IBDataHandler;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 
@@ -49,9 +50,11 @@ public class Starter {
 		try {
 			new Starter().execute(new String[]{
 					// set proper path, but let empty file for the moment
-					"-file", "../Dynami-Sample-Strategy/resources/myPersonalSettings.dynami",
+					"-file", "../Dynami-RangeStrategy/sample.dynami",
 					// set proper path
-					"-strategy_lib", "../Dynami-Adx-Strategy/target/Dynami-Adx-Strategy-0.0.1.jar"});
+					"-strategy_lib", "../Dynami-RangeStrategy/target/Dynami-RangeStrategy-1.0-SNAPSHOT.jar",
+					//"-strategy_lib", "../Dynami-Adx-Strategy/target/Dynami-Adx-Strategy-0.0.1.jar"
+			});
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -62,11 +65,11 @@ public class Starter {
 		new JCommander(arguments).parse(args);;
 
 		Execution.Manager.getServiceBus().registerDefaultServices();
-		Execution.Manager.getServiceBus().registerService(new TextFileDataHandler(), 100);
+		Execution.Manager.getServiceBus().registerService(new IBDataHandler(), 100);
 
 		if(Execution.Manager.select(arguments.instanceFilePath, arguments.strategyLibPath)){
 			if(Execution.Manager.init(null)){
-				System.out.println("Use the following commands to handle strategy execution:");
+				System.out.println("Use the following commands to handle strategy execLution:");
 				System.out.println(Commands.LOAD+"+Enter\t\tto load");
 				System.out.println(Commands.RUN+"+Enter\t\tto run/resume");
 				System.out.println(Commands.PAUSE+"+Enter\t\tto pause");

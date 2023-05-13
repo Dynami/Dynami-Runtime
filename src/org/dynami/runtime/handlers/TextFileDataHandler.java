@@ -1,5 +1,5 @@
 /*
-ù * Copyright 2015 Alessandro Atria - a.atria@gmail.com
+ * Copyright 2015 Alessandro Atria - a.atria@gmail.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ import org.dynami.core.data.vola.RogersSatchellVolatilityEngine;
 import org.dynami.core.utils.DTime;
 import org.dynami.core.utils.DUtils;
 import org.dynami.runtime.IDataHandler;
-import org.dynami.runtime.IService;
+import org.dynami.runtime.Service;
 import org.dynami.runtime.data.BarData;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
@@ -53,7 +53,7 @@ import org.dynami.runtime.utils.JQuantLibUtils;
 import org.dynami.runtime.utils.LastPriceEngine;
 
 @Config.Settings(name = "TextFileDataHandler settings", description = "bla bla bla")
-public class TextFileDataHandler implements IService, IDataHandler {
+public class TextFileDataHandler extends Service implements IDataHandler {
 	private final AtomicInteger idx = new AtomicInteger(0);
 	private static final SimpleDateFormat intradaySecondsFormat = new SimpleDateFormat(
 			TRACK_RECORD.INTRADAY_SECONDS_DATE_FORMAT);

@@ -28,12 +28,12 @@ import org.dynami.core.data.IVolatilityEngine;
 import org.dynami.core.data.vola.ParkinsonVolatilityEngine;
 import org.dynami.core.services.IDataService;
 import org.dynami.core.utils.DTime;
-import org.dynami.runtime.IService;
+import org.dynami.runtime.Service;
 import org.dynami.runtime.data.BarData;
 import org.dynami.runtime.impl.Execution;
 import org.dynami.runtime.topics.Topics;
 
-public class DataService implements IService, IDataService  {
+public class DataService extends Service implements IDataService  {
 	private final Map<String, BarData> data = new ConcurrentSkipListMap<>();
 	private final IMsg msg = Execution.Manager.msg();
 	private boolean initialized = false;
@@ -69,7 +69,8 @@ public class DataService implements IService, IDataService  {
 			});
 			initialized = true;
 		}
-		return initialized;
+		//return initialized;
+		return super.init(config);
 	}
 	
 	public double histVola(String symbol, int units){

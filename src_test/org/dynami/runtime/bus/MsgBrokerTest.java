@@ -47,7 +47,7 @@ public class MsgBrokerTest {
 			counter.set((long)msg);
 //			if(last)
 //				System.out.println(msg);
-			});
+		});
 
 		long start_sending = System.nanoTime();
 		for(long i = 0; i < ITERATIONS; i++){

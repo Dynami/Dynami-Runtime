@@ -26,11 +26,7 @@ import org.dynami.core.config.Config;
 import org.dynami.core.utils.DUtils;
 import org.dynami.runtime.ib.IBService;
 import org.dynami.runtime.impl.Execution;
-import org.dynami.runtime.services.AssetService;
-import org.dynami.runtime.services.DataService;
-import org.dynami.runtime.services.OrderService;
-import org.dynami.runtime.services.PortfolioService;
-import org.dynami.runtime.services.TraceService;
+import org.dynami.runtime.services.*;
 import org.dynami.runtime.topics.Topics;
 
 public interface IServiceBus {
@@ -51,6 +47,7 @@ public interface IServiceBus {
 		registerService(new OrderService(), 40);
 		registerService(new PortfolioService(), 50);
 		registerService(new IBService(), 60);
+		registerService(new EventLoggerService(), 70);
 	}
 
 	public default boolean initServices(final Config config){

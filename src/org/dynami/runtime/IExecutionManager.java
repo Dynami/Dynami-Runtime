@@ -59,7 +59,7 @@ public interface IExecutionManager {
 	/**
 	 * Load and parse Strategy instance file and set strategyJarBasePath for deploying the jar dynamically.
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
-	 * <pre>Errors are propagated through {@link MsgTopics.ERRORS}.<pre>
+	 * <pre>Errors are propagated through {@link Topics.INTERNAL_ERRORS}.<pre>
 	 * @param strategyInstanceFilePath
 	 * @param strategyJarPath
 	 * @return true if all is ok, false otherwise.
@@ -77,7 +77,7 @@ public interface IExecutionManager {
 	/**
 	 * Dynamically load user strategy
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
-	 * <pre>Errors are propagated through {@link Topics.ERRORS}.<pre>
+	 * <pre>Errors are propagated through {@link Topics.INTERNAL_ERRORS}.<pre>
 	 * @return
 	 */
 	public boolean load();
@@ -86,7 +86,7 @@ public interface IExecutionManager {
 	/**
 	 * Starts strategy execution
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
-	 * <pre>Errors are propagated through {@link Topics.ERRORS}.<pre>
+	 * <pre>Errors are propagated through {@link Topics.INTERNAL_ERRORS}.<pre>
 	 * @return
 	 */
 	public boolean run();
@@ -94,7 +94,7 @@ public interface IExecutionManager {
 	/**
 	 * Pauses strategy execution
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
-	 * <pre>Errors are propagated through {@link Topics.ERRORS}.<pre>
+	 * <pre>Errors are propagated through {@link Topics.INTERNAL_ERRORS}.<pre>
 	 * @return
 	 */
 	public boolean pause();
@@ -102,7 +102,7 @@ public interface IExecutionManager {
 	/**
 	 * Stops strategy execution. Stop status is a final point. If you want to start again the strategy, you have to start from the beginning.
 	 * <br>Refer to {@link IExecutionManager.State} for the proper sequence in invoking methods
-	 * <pre>Errors are propagated through {@link Topics.ERRORS}.<pre>
+	 * <pre>Errors are propagated through {@link Topics.INTERNAL_ERRORS}.<pre>
 	 * @return
 	 */
 	public boolean stop();

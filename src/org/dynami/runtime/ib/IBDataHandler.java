@@ -25,6 +25,7 @@ import org.dynami.core.config.Config;
 import org.dynami.core.data.IData;
 import org.dynami.core.data.IVolatilityEngine;
 import org.dynami.core.data.vola.RogersSatchellVolatilityEngine;
+import org.dynami.core.utils.DTime;
 import org.dynami.runtime.IDataHandler;
 import org.dynami.runtime.Service;
 import org.dynami.runtime.data.BarData;
@@ -66,6 +67,15 @@ public class IBDataHandler extends Service implements IDataHandler {
     @Config.Param(name = "Symbol", description = "Asset symbol eg. IBM, MSFT, etc.")
     private String symbol = "EUR"; // IBM
 
+    @Config.Param(name = "Symbol point value", description = "Point value for the symbol asset")
+    private double pointValue = 1.0D; // IBM
+
+    @Config.Param(name = "Symbol tick", description = "The minimum variation price")
+    private double tick = 0.001D; // IBM
+
+    @Config.Param(name = "Save raw data", description = "Save tick by tick data in a separate database")
+    private boolean saveRawData = false;
+
 
     private final AtomicReference<RangeBarBuilder> barBuilder = new AtomicReference<>();
     private final AtomicReference<Bar> prevBar = new AtomicReference<>();
@@ -75,20 +85,12 @@ public class IBDataHandler extends Service implements IDataHandler {
         volaEngine = volaEngineClass.getDeclaredConstructor().newInstance();
 
         final Market market = new Market(marketName, marketName, Locale.US, LocalTime.of(9, 0, 0), LocalTime.of(17, 25, 0));
-        final Asset.Share asset = new Asset.Share(symbol, "", symbol, 1.0, 0.001, marginRequired, market, LastPriceEngine.MidPrice);
+        final Asset.Share asset = new Asset.Share(symbol, "", symbol, pointValue, tick, marginRequired, market, LastPriceEngine.MidPrice);
 
         msg.async(Topics.INSTRUMENT.topic, asset);
 
-        asset.book.addBookListener((Book.Orders ask, Book.Orders bid)->{
-            final double price = asset.lastPrice();
-            if(price == 0.0) return;
-
-            final long time = Math.max(
-                    (ask != null)?ask.time:1L,
-                    (bid != null)?bid.time:1L
-            );
-
-            final Bar bar = barBuilder.get().push(time, price);
+        msg.subscribe(Topics.TICK.topic+"@"+asset.symbol, (last, price)->{
+            final Bar bar = barBuilder.get().push(DTime.Clock.getTime(), (double)price);
 
             if(bar != null) {
                 computedHistorical.append(bar);

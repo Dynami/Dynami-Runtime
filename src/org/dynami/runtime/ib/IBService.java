@@ -22,6 +22,7 @@ import org.dynami.core.config.Config;
 import org.dynami.runtime.Service;
 import org.dynami.runtime.impl.Execution;
 
+import java.util.ArrayList;
 import java.util.Currency;
 import java.util.Map;
 import java.util.TreeMap;
@@ -31,7 +32,7 @@ import static java.lang.Thread.*;
 
 public class IBService extends Service {
     public static final String ID = "IBService";
-    private final AtomicInteger requestId = new AtomicInteger(19000);
+    private final AtomicInteger requestId = new AtomicInteger(1_000);
     private final EWrapperImpl wrapper = new EWrapperImpl(IBService.this);
     private final Map<Integer, Asset.Tradable> mappings = new TreeMap<>();
 
@@ -75,6 +76,7 @@ public class IBService extends Service {
 
     @Override
     public boolean start() {
+        wrapper.getClient().reqCurrentTime();
         return super.start();
     }
 
@@ -90,12 +92,14 @@ public class IBService extends Service {
 
     public boolean subscribeUSTickDataFeed(Asset.Tradable asset){
         System.out.println("IBService::subscribeUSTickDataFeed()");
+
         if(!mappings.containsValue(asset)){
 
             mappings.put(requestId.incrementAndGet(), asset);
+            wrapper.getClient().reqTickByTickData(requestId.get(), USStock(asset), "AllLast", 50, true);
+            wrapper.getClient().reqMktData(requestId.get(), USStock(asset), "221", false, false, new ArrayList<>());
 
             //wrapper.getClient().reqMktData(requestId.get(), USStock(asset), "BidAsk", false, false, null);
-            wrapper.getClient().reqTickByTickData(requestId.get(), USStock(asset), "BidAsk", 10, false);
         }
         return true;
     }
@@ -107,7 +111,6 @@ public class IBService extends Service {
 //        contract.secType("STK");
 //        contract.currency("USD");
 //        contract.exchange(asset.market.getCode());
-
 
         Contract contract = new Contract();
         contract.symbol(asset.symbol); // EUR

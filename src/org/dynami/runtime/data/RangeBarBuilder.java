@@ -12,8 +12,7 @@ public class RangeBarBuilder {
         this.percent = percent;
     }
 
-
-    double open, high, low, close, range = 0.0;
+    double open, high, low, close, range = 0.0D;
 
     long volume, openInterest, time;
 

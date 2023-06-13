@@ -8,7 +8,6 @@ import org.dynami.core.assets.Asset;
 import org.dynami.core.assets.Book;
 import org.dynami.core.bus.IMsg;
 import org.dynami.core.utils.DTime;
-import org.dynami.runtime.IServiceBus;
 import org.dynami.runtime.topics.Topics;
 import org.dynami.runtime.utils.Utils;
 
@@ -103,6 +102,10 @@ public class EWrapperImpl implements EWrapper {
 	//! [tickgeneric]
 	@Override
 	public void tickGeneric(int tickerId, int tickType, double value) {
+		if(Utils.in(TickType.get(tickType), TickType.DELAYED_LAST, TickType.LAST)){
+			Asset.Tradable asset = service.getAsset(tickerId);
+			msg.async(Topics.TICK.topic+"@"+asset.symbol, value);
+		}
 		System.out.println("Tick Generic: " + EWrapperMsgGenerator.tickGeneric(tickerId, tickType, value));
 	}
 	//! [tickgeneric]
@@ -288,7 +291,8 @@ public class EWrapperImpl implements EWrapper {
 	//! [realtimebar]
 	@Override
 	public void currentTime(long time) {
-		System.out.println(EWrapperMsgGenerator.currentTime(time));
+		DTime.Clock.update(time);
+		//System.out.println(EWrapperMsgGenerator.currentTime(time));
 	}
 	//! [fundamentaldata]
 	@Override
@@ -383,6 +387,7 @@ public class EWrapperImpl implements EWrapper {
 	@Override
 	public void error(Exception e) {
 		System.out.println("Exception: " + e.getMessage());
+		msg.async(Topics.INTERNAL_ERRORS.topic, e);
 	}
 
 	@Override
@@ -602,11 +607,29 @@ public class EWrapperImpl implements EWrapper {
 	//! [historicalticksbidask]
     @Override
     public void historicalTicksBidAsk(int reqId, List<HistoricalTickBidAsk> ticks, boolean done) {
-        for (HistoricalTickBidAsk tick : ticks) {
-            System.out.println(EWrapperMsgGenerator.historicalTickBidAsk(reqId, tick.time(), tick.tickAttribBidAsk(), tick.priceBid(), tick.priceAsk(), tick.sizeBid(),
-                    tick.sizeAsk()));
-        }
-    }   
+		final Asset.Tradable asset = service.getAsset(reqId);
+        ticks.stream().sorted((t1, t2)-> Long.compare(t1.time(), t2.time())).forEach( tick -> {
+			System.out.println(
+					EWrapperMsgGenerator.historicalTickBidAsk(
+							reqId,
+							tick.time(),
+							tick.tickAttribBidAsk(),
+							tick.priceBid(),
+							tick.priceAsk(),
+							tick.sizeBid(),
+							tick.sizeAsk())
+			);
+
+			msg.async(
+					Topics.ASK_ORDERS_BOOK_PREFIX.topic+asset.symbol,
+					new Book.Orders(asset.symbol, tick.time(), Book.Side.ASK, 1, tick.priceAsk(), tick.sizeAsk().longValue())
+			);
+			msg.async(
+					Topics.BID_ORDERS_BOOK_PREFIX.topic+asset.symbol,
+					new Book.Orders(asset.symbol, tick.time(), Book.Side.BID, 1, tick.priceBid(), tick.sizeBid().longValue())
+			);
+		});
+    }
     //! [historicalticksbidask]
 	
     @Override
@@ -621,10 +644,14 @@ public class EWrapperImpl implements EWrapper {
 
     //! [tickbytickalllast]
    @Override
-    public void tickByTickAllLast(int reqId, int tickType, long time, double price, Decimal size, TickAttribLast tickAttribLast,
+    public void tickByTickAllLast(int tickerId, int tickType, long time, double price, Decimal size, TickAttribLast tickAttribLast,
             String exchange, String specialConditions) {
-        System.out.println(EWrapperMsgGenerator.tickByTickAllLast(reqId, tickType, time, price, size, tickAttribLast, exchange, specialConditions));
-    }
+	   System.out.println(EWrapperMsgGenerator.tickByTickAllLast(tickerId, tickType, time, price, size, tickAttribLast, exchange, specialConditions));
+	   if(Utils.in(TickType.get(tickType), TickType.DELAYED_LAST, TickType.LAST)){
+			   Asset.Tradable asset = service.getAsset(tickerId);
+			   msg.async(Topics.TICK.topic+"@"+asset.symbol, price);
+	   }
+	}
     //! [tickbytickalllast]
 
     //! [tickbytickbidask]
